@@ -1,0 +1,77 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+
+
+$equality-primary-pallete: (
+    50:#fff7e0,
+    100:#ffeab2,
+    200:#ffdd80,
+    300:#ffd04d,
+    400:#ffc526,
+    500:#ffbb04,
+    600:#ffad00,
+    700:#ff9a03,
+    800:#fe8906,
+    900:#fe6808,
+    contrast: (
+        50:rgba(black, 0.87),
+        100:rgba(black, 0.87),
+        200:rgba(black, 0.87),
+        300:white,
+        400:white,
+        500:white,
+        600:white,
+        700:white,
+        800:white,
+        900:white,
+    )
+);
+
+$equality-accent-pallete: (
+    50:#def6f6,
+    100:#aee8e8,
+    200:#7ad9db,
+    300:#42cace,
+    400:#00bfc6,
+    500:#00b4bf,
+    600:#00a4ad,
+    700:#008f95,
+    800:#007b7e,
+    900:#005855,
+    contrast: (
+        50:rgba(black, 0.87),
+        100:rgba(black, 0.87),
+        200:rgba(black, 0.87),
+        300:white,
+        400:white,
+        500:white,
+        600:white,
+        700:white,
+        800:white,
+        900:white,
+    )
+);
+$my-primary: mat.define-palette($equality-primary-pallete, 600);
+$my-accent: mat.define-palette($equality-accent-pallete, 400);
+$my-warn: mat.define-palette(mat.$red-palette);
+// The "warn" palette is optional and defaults to red if not specified.
+$my-warn: mat.define-palette(mat.$red-palette);
+
+$my-theme: mat.define-light-theme((
+ color: (
+   primary: $my-primary,
+   accent: $my-accent,
+   warn: $my-warn
+ ),
+ density: 0,
+));
+
+// Emit theme-dependent styles for common features used across multiple components.
+@include mat.core-theme($my-theme);
+
+// Emit styles for MatButton based on `$my-theme`. Because the configuration
+// passed to `define-light-theme` omits typography, `button-theme` will not
+// emit any typography styles.
+@include mat.button-theme($my-theme);

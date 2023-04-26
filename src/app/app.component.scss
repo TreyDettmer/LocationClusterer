@@ -1,0 +1,156 @@
+
+@use '@angular/material' as mat;
+
+@include mat.core();
+@import "../styles.scss";
+@import "../my-theme.scss";
+
+.page-container
+{
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: $ff-primary;
+    //background-image: linear-gradient(to bottom, mat.get-color-from-palette($equality-primary-pallete,800),mat.get-color-from-palette($equality-accent-pallete,500));
+}
+
+
+::ng-deep .primary-tooltip
+{
+    color: rgb(255, 255, 255) !important;
+    background-color: rgb(100, 100, 100) !important;
+}
+
+.header
+{
+    height: 10vh;
+    display: flex;
+    width: 100vw;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    //background-color: green;
+    //background-color: mat.get-color-from-palette($equality-primary-pallete,50);
+
+    
+}
+
+.inputs-container
+{
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+
+.cluster-settings-form
+{
+    padding-bottom: 15px;
+}
+
+.cluster-settings-wide-form-field
+{
+    width: min(260px,70vw);
+}
+
+.input-error
+{
+    display: block;
+    color: red;
+    padding: 0;
+    margin: 0;
+}
+
+.file-upload-container
+{
+    width: min(900px,70vw);
+    display: flex;
+    justify-content: center;
+}
+
+.file-upload
+{
+    padding-top: 10px;
+    width: min(400px,70vw);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    font-family: $ff-primary;
+}
+
+.file-input 
+{
+    display: none;
+}
+
+.cluster-diameter-settings
+{
+    display: flex;
+    flex-direction: column;
+    width: min(900px,70vw);
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.cluster-settings-container
+{
+    display: flex;
+    flex-direction: row;
+    width: min(900px,70vw);
+    justify-content: center;
+    gap: 10px;
+
+
+}
+
+.cluster-settings-form-field
+{
+    font-family: $ff-primary;
+}
+
+
+.buttons-container
+{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+.cluster-button
+{
+
+    font-family: $ff-primary;
+    color: white;
+    margin: 0 10px;
+    background-image: linear-gradient(to right,mat.get-color-from-palette($equality-primary-pallete,800),mat.get-color-from-palette($equality-accent-pallete,500));
+    
+}
+
+.log-container
+{
+    height: 5vh;
+    width: 90vw;
+    color: black;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.map-container
+{
+    //border: 2px solid black;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    height: 60vh;
+    width: 70vw;
+    overflow: hidden;
+    margin: 10px;
+}
+
