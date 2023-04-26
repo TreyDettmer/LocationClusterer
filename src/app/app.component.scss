@@ -1,9 +1,4 @@
-
-@use '@angular/material' as mat;
-
-@include mat.core();
 @import "../styles.scss";
-@import "../my-theme.scss";
 
 .page-container
 {
@@ -17,11 +12,6 @@
 }
 
 
-::ng-deep .primary-tooltip
-{
-    color: rgb(255, 255, 255) !important;
-    background-color: rgb(100, 100, 100) !important;
-}
 
 .header
 {
@@ -128,7 +118,7 @@
     font-family: $ff-primary;
     color: white;
     margin: 0 10px;
-    background-image: linear-gradient(to right,mat.get-color-from-palette($equality-primary-pallete,800),mat.get-color-from-palette($equality-accent-pallete,500));
+    background-image: linear-gradient(to right,var(--theme-gradient-color1),var(--theme-gradient-color2));
     
 }
 
