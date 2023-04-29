@@ -4,6 +4,11 @@ import { KMeans, setBackend } from 'scikitjs';
 import * as tf from '@tensorflow/tfjs'
 import { Status, WorkerResponse } from './interfaces/worker-response';
 
+/**
+ * Gets distance in miles between two points on earth.
+ * @param {number[]} origin
+ * @param {number[]} destination
+ */
 function distance(origin : any, destination : any) : number
 {
   let lat1 = origin[0];
@@ -17,9 +22,11 @@ function distance(origin : any, destination : any) : number
   let a = Math.sin(dlat/2) * Math.sin(dlat/2) + Math.cos(lat1 * Math.PI/180.0) * Math.cos(lat2 * Math.PI/180.0) * Math.sin(dlon/2) * Math.sin(dlon/2)
 
   let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-  let d = radius * c
 
-  return d
+  let d = radius * c;
+  // convert to miles
+  d *=  0.621371;
+  return d;
 }
 
 

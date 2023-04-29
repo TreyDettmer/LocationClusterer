@@ -2,29 +2,36 @@
 
 .page-container
 {
-    width: 100vw;
-    height: 100vh;
+
     display: flex;
     flex-direction: column;
-    align-items: center;
+
     font-family: $ff-primary;
-    //background-image: linear-gradient(to bottom, mat.get-color-from-palette($equality-primary-pallete,800),mat.get-color-from-palette($equality-accent-pallete,500));
+    min-height: 100%;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    position: relative;
+
 }
 
 
 
 .header
 {
-    height: 10vh;
+    height: 7vh;
     display: flex;
     width: 100vw;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    //background-color: green;
-    //background-color: mat.get-color-from-palette($equality-primary-pallete,50);
+}
 
-    
+h1
+{
+    font-size: $fs-h1;
+    font-family: $ff-primary;
+    font-weight: $fw-reg;
 }
 
 .inputs-container
@@ -78,15 +85,18 @@
     display: none;
 }
 
-.cluster-diameter-settings
+.upload-button
+{
+    color: white;
+}
+
+.cluster-settings-form
 {
     display: flex;
     flex-direction: column;
-    width: min(900px,70vw);
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
 }
+
+
 
 .cluster-settings-container
 {
@@ -114,33 +124,58 @@
 }
 .cluster-button
 {
-
+    position: relative;
     font-family: $ff-primary;
     color: white;
-    margin: 0 10px;
-    background-image: linear-gradient(to right,var(--theme-gradient-color1),var(--theme-gradient-color2));
+    margin: 0 5px;
     
 }
 
+.gradient-button
+{
+    background-image: linear-gradient(to right,var(--theme-gradient-color1),var(--theme-gradient-color2),var(--theme-gradient-color2),var(--theme-gradient-color1));
+    background-size: 320%;
+    background-position: left;
+    transition: .1s background-position linear;
+}
+
+
+.gradient-button:hover
+{
+    background-position: right;
+}
+
+
+
 .log-container
 {
-    height: 5vh;
+    height: 3vh;
     width: 90vw;
     color: black;
     display: flex;
     flex-direction: row;
     justify-content: center;
     align-items: center;
+    align-self: center;
     gap: 10px;
 }
 
 .map-container
 {
-    //border: 2px solid black;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    //box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     height: 60vh;
-    width: 70vw;
-    overflow: hidden;
+    width: min(900px, 70vw);
+    align-self: center;
+    padding: 0;
     margin: 10px;
 }
 
+footer
+{
+    background: #e2e3e4;
+    color: $clr-dark;
+    text-align: center;
+    font-family: $ff-primary;
+    padding: 1em 0;
+    margin-top: auto;
+}

@@ -1,0 +1,9 @@
+<h1 mat-dialog-title>Switch Cluster</h1>
+<mat-form-field appearance="outline">
+    <mat-label>New Cluster Index</mat-label>
+    <input matInput [(ngModel)]="data.newClusterIndex">
+  </mat-form-field>
+<div mat-dialog-actions>
+  <button mat-button (click)="onNoClick()">Cancel</button>
+  <button mat-button [mat-dialog-close]="data.newClusterIndex" cdkFocusInitial>Confirm</button>
+</div>

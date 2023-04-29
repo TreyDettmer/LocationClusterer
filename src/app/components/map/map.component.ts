@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, OnInit, Output } from '@angular/core';
 import * as L from 'leaflet';
 
 @Component({
@@ -10,12 +10,14 @@ export class MapComponent implements AfterViewInit {
 
 
   private map : any;
-  private markers : L.LayerGroup = new L.LayerGroup();
+  private markers : L.FeatureGroup = new L.FeatureGroup();
 
-  private miniMarkers : L.LayerGroup = new L.LayerGroup();
+  private miniMarkers : L.FeatureGroup = new L.FeatureGroup();
   private icons : any = [];
   private miniIcons : any = [];
-  private colors : string[] = [];
+  private colors : string[] = ["#e6194B","#3cb44b","#ffe119","#4363d8","#f58231","#911eb4","#42d4f4","#f032e6","#bfef45","#fabed4","#469990","#dcbeff","#9A6324","#fffac8","#800000","#aaffc3","#808000","#ffd8b1","#000075","#a9a9a9"];
+
+  @Output() OnInnerClusterPointClicked = new EventEmitter<{innerPointIndex : number, clusterIndex : number}>();
   constructor() { }
 
   ngAfterViewInit(): void {
@@ -38,14 +40,16 @@ export class MapComponent implements AfterViewInit {
 
     tiles.addTo(this.map);
 
-    
+    this.map.on("dblclick",(_:any) =>
+    {
+      this.miniMarkers.clearLayers();
+    });
 
     for (let i = 0; i < 25; i++)
     {
-      var randomColor = Math.floor(Math.random()*16777215).toString(16);
-      this.colors.push(`#${randomColor}`);
+
       let markerHtmlStyles = `
-      background-color: #${randomColor};
+      background-color: ${this.colors[i % this.colors.length]};
       width: 1.25rem;
       height: 1.25rem;
       display: block;
@@ -58,11 +62,11 @@ export class MapComponent implements AfterViewInit {
       let icon = L.divIcon({
         className: "map-pin",
         iconSize: [25,25],
-        html: `<span style="${markerHtmlStyles}" />`
+        html: `<span style="${markerHtmlStyles}"/>`
       })
 
       let miniMarkerHtmlStyles = `
-      background-color: #${randomColor};
+      background-color: ${this.colors[i % this.colors.length]};
       width: 1rem;
       height: 1rem;
       display: block;
@@ -82,6 +86,31 @@ export class MapComponent implements AfterViewInit {
     }
   }
 
+  /**
+  * Gets distance in miles between two points on earth.
+  * @param {number[]} origin
+  * @param {number[]} destination
+  */
+  private distance(origin : any, destination : any) : number
+  {
+    let lat1 = origin[0];
+    let lon1 = origin[1];
+    let lat2 = destination[0];
+    let lon2 = destination[1]
+
+    let radius = 6371 // km
+    let dlat = (lat2-lat1) * Math.PI/180.0
+    let dlon = (lon2-lon1) * Math.PI/180.0
+    let a = Math.sin(dlat/2) * Math.sin(dlat/2) + Math.cos(lat1 * Math.PI/180.0) * Math.cos(lat2 * Math.PI/180.0) * Math.sin(dlon/2) * Math.sin(dlon/2)
+
+    let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+
+    let d = radius * c;
+    // convert to miles
+    d *=  0.621371;
+    return d;
+  }
+
   public PanTo(latLng : L.LatLng)
   {
     this.map.panTo(latLng);
@@ -89,28 +118,22 @@ export class MapComponent implements AfterViewInit {
 
   public UpdateMapMarkers(clusters : any)
   {
-    for (let cluster in clusters)
-    {
-      let averageLatitude : number = 0;
-      let averageLongitude : number = 0;
-      let clusterIndex = parseInt(cluster);
-      //console.log(`${typeof cluster}: ${cluster}`);
-      [averageLatitude,averageLongitude] = this.getAveragePoint(clusters[cluster]);
-      var marker = L.marker([averageLatitude,averageLongitude],{icon:this.icons[clusterIndex]});
-      marker.on("click",(e) =>
-      {
-        this.displayPointsInCluster(clusters,clusterIndex);
-      });
-      marker.addTo(this.markers);
-    }
+    this.markers.clearLayers();
+
     console.log("creating convex hulls");
-    for (let cluster in clusters)
+    for (let i = 0; i < clusters.length; i++)
     {
-      let clusterIndex = parseInt(cluster);
-      var hulledPoints = this.convexHull(clusters[cluster]);
+      let clusterIndex = i;
+      var hulledPoints = this.convexHull(clusters[clusterIndex]);
       var polygon = L.polygon(hulledPoints,{color:this.colors[clusterIndex]});
+      polygon.on("click",(e) =>
+      {
+        this.DisplayPointsInCluster(clusters,clusterIndex);
+      });
+      polygon.bindTooltip(`Cluster ${clusterIndex}`, {direction:"center", offset: [0, 0] });
       polygon.addTo(this.markers);
     }
+    this.map.fitBounds(this.markers.getBounds().pad(0.5));
   }
 
   public ClearMarkers()
@@ -132,17 +155,43 @@ export class MapComponent implements AfterViewInit {
     this.map.panTo(new L.LatLng(averageLatitude, averageLongitude));
   }
 
-  private displayPointsInCluster(clusters : any, clusterIndex:number)
+  public DisplayPointsInCluster(clusters : any, clusterIndex:number)
   {
     this.miniMarkers.clearLayers();
     let cluster = clusters[clusterIndex];
+    // this.miniMarkers.getLayers()
+    let displayedMiniMarkers : any[] = [];
+    let hiddenMarkerCount = 0;
     for (let i = 0; i < cluster.length; i++)
     {
+      let shouldDisplay = true;
+      for (let j = 0; j < displayedMiniMarkers.length; j++)
+      {
+        if (this.distance(displayedMiniMarkers[j],[cluster[i][0],cluster[i][1]]) < 5.0)
+        {
+          hiddenMarkerCount++;
+          shouldDisplay = false;
+          break;
+        }
+      }
+      if (shouldDisplay == false)
+      {
+        continue;
+      }
       var marker = L.marker([cluster[i][0],cluster[i][1]],{icon:this.miniIcons[clusterIndex]});
-
+      displayedMiniMarkers.push([cluster[i][0],cluster[i][1]]);
+      marker.on("click",(e) =>
+      {
+        this.InnerClusterPointClicked(i,clusterIndex);
+      });
       marker.addTo(this.miniMarkers);
     }
-    console.log(`displaying points in cluster ${clusterIndex}`);
+    console.log(`hid ${hiddenMarkerCount} points`);
+  }
+
+  public InnerClusterPointClicked(innerPointIndex : number, clusterIndex : number)
+  {
+    this.OnInnerClusterPointClicked.emit({innerPointIndex,clusterIndex});
   }
 
   private getAveragePoint(points : any) : [number, number]

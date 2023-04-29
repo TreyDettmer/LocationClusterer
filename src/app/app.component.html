@@ -5,64 +5,61 @@
   <div class="inputs-container">
     <div class="file-upload-container">
         
-        <input type="file" class="file-input"
+        <input type="file" class="file-input" accept=".csv"
        (change)="UploadedFileChanged($event)" #fileUpload>
 
         <div class="file-upload">
 
           {{UploadedFileName || "No file uploaded yet."}}
 
-          <button mat-mini-fab color="accent" class="upload-btn"
+          <button mat-icon-button class="upload-button gradient-button " matTooltipPosition="right" matTooltip="Upload a CSV file containing longitude and latitude columns" matTooltipClass="primary-tooltip"
             (click)="fileUpload.click()">
             <mat-icon>attach_file</mat-icon>
           </button>
         </div>
     </div>
     <form [formGroup]="settingsForm"  class="cluster-settings-form">
-      <div class="cluster-diameter-settings">
+
+      <div class="cluster-settings-container">
+
         <mat-form-field appearance="outline" color="primary" class="cluster-settings-wide-form-field">
           <mat-label>Maximum Cluster Diameter (miles)</mat-label>
-          <input matInput  type="number" formControlName="maxDistance">
-          <mat-icon matSuffix matTooltipPosition="right" matTooltip="The maximum distance between any two points in a cluster" matTooltipClass="primary-tooltip"
-          >help_outline</mat-icon>
+          <input matInput  type="number" matTooltipPosition="right" matTooltip="The maximum distance between any two points in a cluster" matTooltipClass="primary-tooltip" formControlName="maxDistance">
           <mat-error *ngIf="settingsForm.controls['maxDistance'].invalid && (settingsForm.controls['maxDistance'].dirty || settingsForm.controls['maxDistance'].touched)">Must be between 1 and 2000.</mat-error>
         </mat-form-field>
-      </div>
-      <div class="cluster-settings-container">
+
         <mat-form-field appearance="outline" color="primary">
           <mat-label>Minimum Clusters</mat-label>
-          <input matInput type="number" formControlName="minimumClusterCount">
-          <mat-icon matSuffix matTooltipPosition="right" matTooltip="The minimum number of clusters to search for" matTooltipClass="primary-tooltip"
-          >help_outline</mat-icon>
+          <input matInput type="number" matTooltipPosition="right" matTooltip="The minimum number of clusters to search for" matTooltipClass="primary-tooltip" formControlName="minimumClusterCount">
           <mat-error *ngIf="settingsForm.controls['minimumClusterCount'].invalid && (settingsForm.controls['minimumClusterCount'].dirty || settingsForm.controls['minimumClusterCount'].touched)">Invalid Minimum Clusters.</mat-error>
         </mat-form-field>
 
         <mat-form-field appearance="outline" color="primary">
           <mat-label>Maximum Clusters</mat-label>
-          <input matInput type="number" formControlName="maximumClusterCount">
-          <mat-icon matSuffix matTooltipPosition="right" matTooltip="The maximum number of clusters to search for" matTooltipClass="primary-tooltip"
-          >help_outline</mat-icon>
+          <input matInput type="number" matTooltipPosition="right" matTooltip="The maximum number of clusters to search for" matTooltipClass="primary-tooltip" formControlName="maximumClusterCount">
           <mat-error *ngIf="settingsForm.controls['maximumClusterCount'].invalid && (settingsForm.controls['maximumClusterCount'].dirty || settingsForm.controls['maximumClusterCount'].touched)">Invalid Maximum Clusters.</mat-error>
         </mat-form-field>
       </div>
       <div class="buttons-container">
-        <button mat-raised-button class="cluster-button" (click)="FindValidClusters()" [disabled]="settingsForm.invalid || this.showSpinner || this.uploadedFile == null">
+        <button mat-flat-button class="cluster-button gradient-button" (click)="FindValidClusters()" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
           Generate Clusters
         </button>
         
-        <button mat-raised-button class="cluster-button" (click)="SaveFile()" *ngIf="!this.showSpinner && this.clusters.length > 0" [disabled]="settingsForm.invalid || this.showSpinner || this.uploadedFile == null">
+        <button mat-flat-button class=" cluster-button gradient-button" (click)="SaveFile()" *ngIf="!this.ShowSpinner && this.Clusters.length > 0" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
           Download Clustered Data
         </button>
       </div>
     </form>
   </div>
-  <div  class="log-container">
-    <app-loading-spinner *ngIf="this.showSpinner"></app-loading-spinner>
+  <div  class="log-container"> 
     <p *ngIf="this.loadLoggerService.Message != ''">{{this.loadLoggerService.Message}}</p>
+    <app-loading-spinner *ngIf="this.ShowSpinner"></app-loading-spinner>
   </div>
   <div class="map-container">
     <app-map #map></app-map>
   </div>
-    
+  <footer>
+    <p>&#169; 2023 Trey Dettmer</p>
+  </footer>
 
 </div>

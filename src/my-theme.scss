@@ -77,6 +77,9 @@ $my-theme: mat.define-light-theme((
 @include mat.button-theme($my-theme);
 @include mat.input-theme($my-theme);
 @include mat.tooltip-theme($my-theme);
+@include mat.dialog-theme($my-theme);
+//@include mat.form-field-outline-theme($my-theme);
+
 
 // @include mat.all-component-themes($my-theme);
 $theme-gradient-color1: mat.get-color-from-palette($equality-primary-pallete,800);

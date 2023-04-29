@@ -11,12 +11,15 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { LoadingSpinnerComponent } from './components/loading-spinner/loading-spinner.component';
 import { MapComponent } from './components/map/map.component';
 import { MatTooltipModule } from '@angular/material/tooltip'; 
+import {MatDialogModule} from '@angular/material/dialog';
+import { ClusterSwitcherDialogComponent } from './components/cluster-switcher-dialog/cluster-switcher-dialog.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     LoadingSpinnerComponent,
-    MapComponent
+    MapComponent,
+    ClusterSwitcherDialogComponent
   ],
   imports: [
     BrowserModule,
@@ -27,7 +30,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatIconModule,
     FormsModule,
     ReactiveFormsModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatDialogModule
   ],
   providers: [],
   bootstrap: [AppComponent]
