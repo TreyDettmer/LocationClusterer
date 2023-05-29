@@ -56,6 +56,16 @@
     <app-loading-spinner *ngIf="this.ShowSpinner"></app-loading-spinner>
   </div>
   <div class="map-container">
+    <div class="map-legend">
+      <div class="legend-title">Cluster {{this.HoveredClusterIndex}}</div>
+      
+      <div class="cluster-info">
+        <b>Dist:</b> {{this.HoveredClusterDistance}} miles
+      </div>
+      <div class="cluster-info">
+        <b>Time:</b> {{this.HoveredClusterTime}} hours
+      </div>
+    </div>
     <app-map #map></app-map>
   </div>
   <footer>

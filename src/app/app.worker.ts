@@ -34,20 +34,30 @@ function createClusters(numberOfClusters : number, points : any) : any
 {
   let kmeans = new KMeans({nClusters:numberOfClusters,randomState:0}).fit(points);
   let labels = kmeans.predict(points).arraySync();
-  let uniqueLabelCount = new Set(labels).size;
-  let clusters = new Array(uniqueLabelCount);
+  //let uniqueLabelCount = new Set(labels).size;
+  let clusters = new Array(numberOfClusters);
   for (let i = 0; i < clusters.length; i++)
   {
     clusters[i] = [];
   }
-  console.log("unique labels " + uniqueLabelCount);
+  //console.log("unique labels " + uniqueLabelCount);
 
   for (let row = 0; row < points.length; row++)
   {
-    
     let clusterIndex = labels[row];
-    clusters[clusterIndex].push(points[row]);
-    points[row].push(clusterIndex); 
+    try
+    {
+      
+      clusters[clusterIndex].push(points[row]);
+      points[row].push(clusterIndex); 
+    }
+    catch (error)
+    {
+      console.error(error);
+      console.log(`ClusterIndex: ${clusterIndex} clusters.length: ${clusters.length} points[row]: ${points[row]}`);
+      throw "error";
+    }
+
   }
   return [clusters,points];
   
@@ -100,7 +110,6 @@ function FindValidClusters(points : any, clusters : any, minimumClusters : numbe
     {
       if (points[0].length > 2)
       {
-        console.log(`Length is greater than 2`);
         // remove cluster previous labels
         points = points.map(function(val: any[]) {
           return val.slice(0, -1);
@@ -124,6 +133,8 @@ function FindValidClusters(points : any, clusters : any, minimumClusters : numbe
   console.log(`Unable to find a valid cluster solution between ${minimumClusters} and ${maximumClusters} clusters`);
   return [null,null,0]
 }
+
+
 
 addEventListener('message', ({ data }) => {
   var points;

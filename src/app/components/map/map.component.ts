@@ -18,6 +18,8 @@ export class MapComponent implements AfterViewInit {
   private colors : string[] = ["#e6194B","#3cb44b","#ffe119","#4363d8","#f58231","#911eb4","#42d4f4","#f032e6","#bfef45","#fabed4","#469990","#dcbeff","#9A6324","#fffac8","#800000","#aaffc3","#808000","#ffd8b1","#000075","#a9a9a9"];
 
   @Output() OnInnerClusterPointClicked = new EventEmitter<{innerPointIndex : number, clusterIndex : number}>();
+  @Output() OnClusterMouseOver = new EventEmitter<{clusterIndex : number}>();
+  @Output() OnClusterMouseLeave = new EventEmitter<{clusterIndex : number}>();
   constructor() { }
 
   ngAfterViewInit(): void {
@@ -84,6 +86,7 @@ export class MapComponent implements AfterViewInit {
       this.icons.push(icon);
       this.miniIcons.push(miniIcon);
     }
+
   }
 
   /**
@@ -130,15 +133,34 @@ export class MapComponent implements AfterViewInit {
       {
         this.DisplayPointsInCluster(clusters,clusterIndex);
       });
+      polygon.on("mouseover",(e) =>
+      {
+        this.OnClusterMouseOver.emit({clusterIndex});
+      });
+      polygon.on("mouseout",(e) =>
+      {
+        this.OnClusterMouseLeave.emit({clusterIndex});
+      });
       polygon.bindTooltip(`Cluster ${clusterIndex}`, {direction:"center", offset: [0, 0] });
       polygon.addTo(this.markers);
     }
     this.map.fitBounds(this.markers.getBounds().pad(0.5));
   }
 
+  public DrawRoute(waypoints : any)
+  {
+    var latlngs = [];
+    for (let i = 0; i < waypoints.length; i++)
+    {
+      latlngs.push([waypoints[i].location[1],waypoints[i].location[0]]);
+    }
+    var polyline = L.polyline(latlngs,{color: 'red'}).addTo(this.markers);
+  }
+
   public ClearMarkers()
   {
     this.markers.clearLayers();
+    this.miniMarkers.clearLayers();
   }
 
   public UpdateMapCenter(points : any)
@@ -159,40 +181,82 @@ export class MapComponent implements AfterViewInit {
   {
     this.miniMarkers.clearLayers();
     let cluster = clusters[clusterIndex];
-    // this.miniMarkers.getLayers()
-    let displayedMiniMarkers : any[] = [];
-    let hiddenMarkerCount = 0;
+    let displayedMiniMarkerCopies : any[] = new Array(cluster.length).fill(0);
+    let shouldDisplayMiniMarker : any[] = new Array(cluster.length).fill(true);
     for (let i = 0; i < cluster.length; i++)
     {
-      let shouldDisplay = true;
-      for (let j = 0; j < displayedMiniMarkers.length; j++)
+      let j = 0;
+      for (j = 0; j < i; j++)
       {
-        if (this.distance(displayedMiniMarkers[j],[cluster[i][0],cluster[i][1]]) < 5.0)
+        // check if point is the same
+        if (cluster[j][0] == cluster[i][0] && cluster[j][1] == cluster[i][1])
         {
-          hiddenMarkerCount++;
-          shouldDisplay = false;
+          displayedMiniMarkerCopies[j] += 1;
+          shouldDisplayMiniMarker[i] = false;
           break;
         }
       }
-      if (shouldDisplay == false)
-      {
-        continue;
-      }
-      var marker = L.marker([cluster[i][0],cluster[i][1]],{icon:this.miniIcons[clusterIndex]});
-      displayedMiniMarkers.push([cluster[i][0],cluster[i][1]]);
-      marker.on("click",(e) =>
-      {
-        this.InnerClusterPointClicked(i,clusterIndex);
-      });
-      marker.addTo(this.miniMarkers);
+
     }
-    console.log(`hid ${hiddenMarkerCount} points`);
+    let num = 0;
+    for (let i = 0; i < cluster.length; i++)
+    {
+      if (shouldDisplayMiniMarker[i])
+      {
+        num++;
+        let miniMarkerHtmlStyles = `
+        background-color: ${this.colors[clusterIndex % this.colors.length]};
+        width: 1.25rem;
+        height: 1.25rem;
+        display: block;
+        left: 0;
+        top: 0;
+        position: relative;
+        border-radius: 1.25rem;
+        border: 1px solid #FFFFFF;
+        text-align: center;
+        color: white;`;
+        let miniIcon : L.DivIcon;
+        if (displayedMiniMarkerCopies[i] > 0)
+        {
+          miniIcon = L.divIcon({
+            className: "mini-pin-mini",
+            iconSize: [12,12],
+            html: `<span style="${miniMarkerHtmlStyles}">${displayedMiniMarkerCopies[i] + 1}</span>`
+          })
+        }
+        else
+        {
+          miniIcon = L.divIcon({
+            className: "mini-pin-mini",
+            iconSize: [12,12],
+            html: `<span style="${miniMarkerHtmlStyles}"></span>`
+          })
+        }
+        var marker = L.marker([cluster[i][0],cluster[i][1]],{icon:miniIcon});
+        marker.on("click",(e) =>
+        {
+          this.InnerClusterPointClicked(i,clusterIndex);
+        });
+        marker.addTo(this.miniMarkers);
+      }
+    }
+    console.log(`${num} points displayed`);
+  }
+
+  public GraphPointsByZipCodes(dataFrame : any)
+  {
+    for (let i = 0; i < dataFrame.length; i++)
+    {
+      //let Lat = 
+    }
   }
 
   public InnerClusterPointClicked(innerPointIndex : number, clusterIndex : number)
   {
     this.OnInnerClusterPointClicked.emit({innerPointIndex,clusterIndex});
   }
+
 
   private getAveragePoint(points : any) : [number, number]
   {

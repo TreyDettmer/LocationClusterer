@@ -168,6 +168,38 @@ h1
     align-self: center;
     padding: 0;
     margin: 10px;
+    position: relative;
+}
+
+.map-legend
+{
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background-color: rgba(161, 161, 161,.5);
+    width: min(150px,11.67vw);
+    height: 30vh;
+    right: 0px;
+    top: 0px;
+    z-index: 1;
+}
+
+.legend-title
+{
+    text-align: center;
+    text-decoration: underline;
+}
+.cluster-info
+{
+    text-align: left;
+    padding: 5px 5px;
+}
+#map
+{
+    position: absolute;
+    left: 0;
+    top: 0;
 }
 
 footer

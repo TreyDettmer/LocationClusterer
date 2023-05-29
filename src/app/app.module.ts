@@ -13,6 +13,7 @@ import { MapComponent } from './components/map/map.component';
 import { MatTooltipModule } from '@angular/material/tooltip'; 
 import {MatDialogModule} from '@angular/material/dialog';
 import { ClusterSwitcherDialogComponent } from './components/cluster-switcher-dialog/cluster-switcher-dialog.component';
+import { HttpClientModule } from '@angular/common/http';
 
 @NgModule({
   declarations: [
@@ -31,7 +32,8 @@ import { ClusterSwitcherDialogComponent } from './components/cluster-switcher-di
     FormsModule,
     ReactiveFormsModule,
     MatTooltipModule,
-    MatDialogModule
+    MatDialogModule,
+    HttpClientModule
   ],
   providers: [],
   bootstrap: [AppComponent]
