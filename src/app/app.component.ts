@@ -1,5 +1,5 @@
 import { Component, AfterViewInit, ViewChild} from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
 import { LoadLoggerService } from './services/load-logger.service';
 import { Status, WorkerResponse } from './interfaces/worker-response';
 import { MapComponent } from './components/map/map.component';
@@ -41,10 +41,10 @@ export class AppComponent implements AfterViewInit{
 
   
 
-  settingsForm : FormGroup = new FormGroup({
-    minimumClusterCount: new FormControl(5,[Validators.min(1)]),
-    maximumClusterCount: new FormControl(20,[Validators.max(80)]),
-    maxDistance: new FormControl(500,[Validators.min(1),Validators.max(1000)])
+  settingsForm : UntypedFormGroup = new UntypedFormGroup({
+    minimumClusterCount: new UntypedFormControl(5,[Validators.min(1)]),
+    maximumClusterCount: new UntypedFormControl(20,[Validators.max(80)]),
+    maxDistance: new UntypedFormControl(500,[Validators.min(1),Validators.max(1000)])
   });
 
   constructor(public loadLoggerService : LoadLoggerService, public dialog : MatDialog, private http: HttpClient)
