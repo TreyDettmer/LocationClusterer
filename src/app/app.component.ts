@@ -9,6 +9,8 @@ import { ClusterSwitcherDialogComponent } from './components/cluster-switcher-di
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map, retry } from 'rxjs/operators';
+import { Patient } from './interfaces/patient';
+
 
 @Component({
   selector: 'app-root',
@@ -25,6 +27,8 @@ export class AppComponent implements AfterViewInit{
 
   public UploadedFile : any = undefined;
   public UploadedFileName : string = "";
+
+  private patients : Patient[] = [];
 
 
   private dataFrame! : any[];
@@ -115,7 +119,7 @@ export class AppComponent implements AfterViewInit{
 
     this.mapComponent.OnClusterMouseLeave.subscribe(({clusterIndex}) =>
     {
-      console.log("left");
+      //console.log("left");
       this.HoveredClusterIndex = -1;
       this.HoveredClusterDistance = -1;
       this.HoveredClusterTime = -1;
@@ -159,7 +163,7 @@ export class AppComponent implements AfterViewInit{
               this.dataFrameLocations[indexInDataframe][2] = result;
               this.Clusters[result].push([location[0],location[1]]);
               this.Clusters[clusterIndex].splice(innerPointIndex,1);
-              this.mapComponent.UpdateMapMarkers(this.Clusters);
+              //this.mapComponent.UpdateMapMarkers(this.Clusters);
               this.mapComponent.DisplayPointsInCluster(this.Clusters,result);
             }
           }
@@ -191,27 +195,35 @@ export class AppComponent implements AfterViewInit{
         }
         this.UploadedFileName = this.UploadedFile.name;
         this.setLongitudeAndLatitudeConstants();
-        // console.log(`Length before duplicate removal: ${this.dataFrame.length}`);
-        
-        // this.dataFrame = [...new Map(this.dataFrame.map(v => [`${v["MemberAddress"]}` ,v])).values()];
-        // console.log(`Length after duplicate address removal: ${this.dataFrame.length}`);
-        // this.dataFrame = [...new Map(this.dataFrame.map(v => [`${v[this.LATITUDE]}${v[this.LONGITUDE]}` ,v])).values()];
-        // console.log(`Length after duplicate location removal: ${this.dataFrame.length}`);
+
         this.dataFrameLocations = new Array(this.dataFrame.length).fill([0,0]);
         for (let i = 0; i < this.dataFrame.length; i++)
         {
+          let patient = new Patient();
           this.dataFrameLocations[i] = [parseFloat(this.dataFrame[i][this.LATITUDE]),parseFloat(this.dataFrame[i][this.LONGITUDE])];
 
+          patient.latitude = parseFloat(this.dataFrame[i][this.LATITUDE]);
+          patient.longitude = parseFloat(this.dataFrame[i][this.LONGITUDE]);        
+          patient.patUID = this.dataFrame[i]["PatUID"] as string;
+          patient.memberAddress = this.dataFrame[i]["MemberAddress"] as string;
+          patient.city = this.dataFrame[i]["City"] as string;
+          patient.state = this.dataFrame[i]["State"] as string;
+          patient.zip = this.dataFrame[i]["Zip"] as string;
+          patient.county = this.dataFrame[i]["County"] as string;
+          this.patients.push(patient);
           // replace non numbers with 0
           if (isNaN(this.dataFrameLocations[i][0]))
           {
+            console.log(`dataframe[${i}][Latitude]: ${this.dataFrame[i][this.LATITUDE]} is not a number`);
             this.dataFrameLocations[i] = [0,this.dataFrameLocations[i][1]];
           }
           if (isNaN(this.dataFrameLocations[i][1]))
           {
+            console.log(`dataframe[${i}][Longitude]: ${this.dataFrame[i][this.LONGITUDE]} is not a number`);
             this.dataFrameLocations[i] = [this.dataFrameLocations[i][0],0];
           }
         }
+
 
       },
       (error) =>
@@ -229,6 +241,13 @@ export class AppComponent implements AfterViewInit{
     }
     fileReader.readAsText(this.UploadedFile); 
   }
+
+  RunKmeans()
+  {
+
+  }
+
+
 
   // called when user clicks on 'save clustered data'
   public SaveFile()
@@ -318,19 +337,21 @@ export class AppComponent implements AfterViewInit{
   FindValidClusters()
   {
 
-    if (this.dataFrameLocations.length == 0)
+    if (this.patients.length == 0)
     {
       alert("No data to cluster");
       return;
     }
-    if (this.settingsForm.controls["minimumClusterCount"].value >= this.settingsForm.controls["maximumClusterCount"].value)
-    {
-      alert("Minimum Clusters must be less than Maximum Clusters");
+    // if (this.settingsForm.controls["minimumClusterCount"].value >= this.settingsForm.controls["maximumClusterCount"].value)
+    // {
+    //   alert("Minimum Clusters must be less than Maximum Clusters");
 
-      return;
-    }
+    //   return;
+    // }
 
     this.mapComponent.ClearMarkers();
+    this.mapComponent.CreateMarkerClusters(this.patients);
+    return;
     this.Clusters = [];
     this.resetClusterValues();
     this.ShowSpinner = true;
@@ -354,7 +375,8 @@ export class AppComponent implements AfterViewInit{
           this.dataFrameLocations = workerResponse.data.points;
           this.Clusters = workerResponse.data.clusters;
           this.mapComponent.ClearMarkers();
-          this.mapComponent.UpdateMapMarkers(this.Clusters);
+          console.log(this.Clusters);
+          //this.mapComponent.UpdateMapMarkers(this.Clusters);
           this.loadLoggerService.LogMessage("");
           this.ShowSpinner = false;
         }
@@ -409,6 +431,18 @@ export class AppComponent implements AfterViewInit{
       }
       )
     )
+  }
+
+  CalculateInterquartileRange()
+  {
+    let latitudes = [];
+    let longitudes = [];
+    for (let i = 0; i < this.dataFrameLocations.length; i++)
+    {
+      latitudes.push(this.dataFrameLocations[i][0]);
+      longitudes.push(this.dataFrameLocations[i][1]);
+    }
+    
   }
 
 }

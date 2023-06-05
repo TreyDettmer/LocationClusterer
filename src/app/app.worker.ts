@@ -1,8 +1,9 @@
 /// <reference lib="webworker" />
 
-import { KMeans, setBackend } from 'scikitjs';
+import { KMeans, setBackend, KNeighborsClassifier } from 'scikitjs';
 import * as tf from '@tensorflow/tfjs'
 import { Status, WorkerResponse } from './interfaces/worker-response';
+import * as turf from '@turf/turf';
 
 /**
  * Gets distance in miles between two points on earth.
@@ -87,6 +88,7 @@ function validateCluster(cluster : any, maxDistance : number) : boolean
     {
       if (distance(cluster[originIndex],cluster[destinationIndex]) > maxDistance)
       {
+        console.log(`distance between ${cluster[originIndex]} and ${cluster[destinationIndex] } is ${distance(cluster[originIndex],cluster[destinationIndex])} which exceeds ${maxDistance}`);
         return false;
       }
     }
@@ -134,6 +136,129 @@ function FindValidClusters(points : any, clusters : any, minimumClusters : numbe
   return [null,null,0]
 }
 
+function RunDBScan(points : any, clusters : any) : [points : any,clusters : any]
+{
+  console.log("Running DBScan");
+  let turfPoints = [];
+  for (let i = 0; i < points.length; i++)
+  {
+    turfPoints.push(turf.point([points[i][0],points[i][1]]));
+  }
+  let collection = turf.featureCollection(turfPoints);
+  console.log("creating clusters");
+  let clustered = turf.clustersDbscan(turf.clone(collection),1,{minPoints:4});
+  let features = clustered.features;
+
+  let clusterValues : number[] = [];
+  for (let i = 0; i < features.length; i++)
+  {
+
+    if ('cluster' in features[i].properties)
+    {
+      if (!clusterValues.includes(features[i].properties.cluster!))
+      {
+        clusterValues.push(features[i].properties.cluster!);
+      }
+    }
+  }
+  clusters = new Array(clusterValues.length + 2);
+  for (let i = 0; i < clusterValues.length + 2; i++)
+  {
+    clusters[i] = []
+  }
+  for (let i = 0; i < features.length; i++)
+  {
+    if (features[i].properties.dbscan == "noise")
+    {
+      clusters[0].push([points[i][0],points[i][1],0]);
+    }
+    else if (features[i].properties.dbscan == "edge")
+    {
+      clusters[1].push([points[i][0],points[i][1],1]);
+    }
+    else if (features[i].properties.dbscan == "core")
+    {
+      let clusterValue : number = features[i].properties.cluster!;
+      clusters[clusterValue + 2].push([points[i][0],points[i][1],clusterValue + 2]);
+    }
+    else
+    {
+
+      console.log(`Unknown dbscan: ${features[i].properties}`);
+    }
+  }
+  
+
+  return [points,clusters];
+}
+
+function RunKmeans(numberOfClusters : number, points : any) : [points : any,clusters : any]
+{
+  if (points.length > 0)
+  {
+    if (points[0].length > 2)
+    {
+      // remove cluster previous labels
+      points = points.map(function(val: any[]) {
+        return val.slice(0, -1);
+      });
+    }
+  }
+  if (points[0].length > 2)
+  {
+    console.log(`Length is still greater than 2`);
+  }
+  let kmeans = new KMeans({nClusters:numberOfClusters,randomState:0}).fit(points);
+  let labels = kmeans.predict(points).arraySync();
+  //let uniqueLabelCount = new Set(labels).size;
+  let clusters = new Array(numberOfClusters);
+  for (let i = 0; i < clusters.length; i++)
+  {
+    clusters[i] = [];
+  }
+  //console.log("unique labels " + uniqueLabelCount);
+
+  for (let row = 0; row < points.length; row++)
+  {
+    let clusterIndex = labels[row];
+    try
+    {
+      
+      clusters[clusterIndex].push(points[row]);
+      points[row].push(clusterIndex); 
+    }
+    catch (error)
+    {
+      console.error(error);
+      console.log(`ClusterIndex: ${clusterIndex} clusters.length: ${clusters.length} points[row]: ${points[row]}`);
+      throw "error";
+    }
+
+  }
+  return [points,clusters];
+}
+
+function CalculateKNeighbors(points : any)
+{
+  if (points.length > 0)
+  {
+    if (points[0].length > 2)
+    {
+      // remove cluster previous labels
+      points = points.map(function(val: any[]) {
+        return val.slice(0, -1);
+      });
+    }
+  }
+  if (points[0].length > 2)
+  {
+    console.log(`Length is still greater than 2`);
+  }
+  let neighbors = new KNeighborsClassifier({nNeighbors:4});
+  //let neighborsFit = neighbors.fit(points);
+
+}
+
 
 
 addEventListener('message', ({ data }) => {
@@ -146,7 +271,8 @@ addEventListener('message', ({ data }) => {
   points = data.points;
   clusters = data.clusters;
   minimumClusters = data.minimumClusters;
-  [points,clusters,minimumClusters] = FindValidClusters(data.points,data.clusters,data.minimumClusters,data.maximumClusters,data.maxDistance);
+  [points,clusters] = RunDBScan(data.points,data.clusters);
+  //[points,clusters,minimumClusters] = FindValidClusters(data.points,data.clusters,data.minimumClusters,data.maximumClusters,data.maxDistance);
 
   const responseData = {points: points,clusters: clusters,minimumClusters:minimumClusters};
   let response : WorkerResponse = {};
