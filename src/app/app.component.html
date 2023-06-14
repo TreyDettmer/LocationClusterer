@@ -24,20 +24,8 @@
 
         <mat-form-field appearance="outline" color="primary" class="cluster-settings-wide-form-field">
           <mat-label>Maximum Cluster Diameter (miles)</mat-label>
-          <input matInput  type="number" matTooltipPosition="right" matTooltip="The maximum distance between any two points in a cluster" matTooltipClass="primary-tooltip" formControlName="maxDistance">
-          <mat-error *ngIf="settingsForm.controls['maxDistance'].invalid && (settingsForm.controls['maxDistance'].dirty || settingsForm.controls['maxDistance'].touched)">Must be between 1 and 2000.</mat-error>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" color="primary">
-          <mat-label>Minimum Clusters</mat-label>
-          <input matInput type="number" matTooltipPosition="right" matTooltip="The minimum number of clusters to search for" matTooltipClass="primary-tooltip" formControlName="minimumClusterCount">
-          <mat-error *ngIf="settingsForm.controls['minimumClusterCount'].invalid && (settingsForm.controls['minimumClusterCount'].dirty || settingsForm.controls['minimumClusterCount'].touched)">Invalid Minimum Clusters.</mat-error>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" color="primary">
-          <mat-label>Maximum Clusters</mat-label>
-          <input matInput type="number" matTooltipPosition="right" matTooltip="The maximum number of clusters to search for" matTooltipClass="primary-tooltip" formControlName="maximumClusterCount">
-          <mat-error *ngIf="settingsForm.controls['maximumClusterCount'].invalid && (settingsForm.controls['maximumClusterCount'].dirty || settingsForm.controls['maximumClusterCount'].touched)">Invalid Maximum Clusters.</mat-error>
+          <input matInput  type="number" matTooltipPosition="right" matTooltip="The maximum distance between any two points in a cluster" matTooltipClass="primary-tooltip" formControlName="maxDiameter">
+          <mat-error *ngIf="settingsForm.controls['maxDiameter'].invalid && (settingsForm.controls['maxDiameter'].dirty || settingsForm.controls['maxDiameter'].touched)">Must be between 1 and 25.</mat-error>
         </mat-form-field>
       </div>
       <div class="buttons-container">
@@ -45,7 +33,7 @@
           Generate Clusters
         </button>
         
-        <button mat-flat-button class=" cluster-button gradient-button" (click)="SaveFile()" *ngIf="!this.ShowSpinner && this.Clusters.length > 0" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
+        <button mat-flat-button class=" cluster-button gradient-button" (click)="SaveFile()" *ngIf="!this.ShowSpinner && this.mapComponent ? (this.mapComponent.Clusters.length > 0) : false" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
           Download Clustered Data
         </button>
       </div>
@@ -55,18 +43,35 @@
     <p *ngIf="this.loadLoggerService.Message != ''">{{this.loadLoggerService.Message}}</p>
     <app-loading-spinner *ngIf="this.ShowSpinner"></app-loading-spinner>
   </div>
-  <div class="map-container">
-    <div class="map-legend">
-      <div class="legend-title">Cluster {{this.HoveredClusterIndex}}</div>
-      
-      <div class="cluster-info">
-        <b>Dist:</b> {{this.HoveredClusterDistance}} miles
+  <div class="content">
+
+    
+    <div class="side-panel">
+
+      <div class="side-panel-scrollbox">
+        <ng-container *ngIf="this.SelectedPatients.length != 0">
+          <div *ngFor="let patient of this.SelectedPatients">
+            <app-patient-panel [patient]="patient" [appComponent]="this" [cluster]="this.SelectedCluster"></app-patient-panel>
+          </div>
+        </ng-container>
+        <ng-container *ngIf="this.SelectedCluster && this.SelectedPatients.length == 0">
+          <app-cluster-panel [cluster]="this.SelectedCluster" [appComponent]="this"></app-cluster-panel>   
+        </ng-container>
       </div>
-      <div class="cluster-info">
-        <b>Time:</b> {{this.HoveredClusterTime}} hours
+      <div class="side-panel-footer" *ngIf="this.SelectedPatients.length != 0">
+        <button color="accent" *ngIf="this.SelectedPatients.length != 0" [disabled]="this.SelectedPatients.length <= 1 || (this.IsChoosingNewClusterForPatient && this.SelectedPatient != null)" mat-flat-button (click)="OnPatientReassignRequest($event,null)">
+          {{this.IsChoosingNewClusterForPatient && this.SelectedPatient == null ? "Cancel" : "Reassign Points to Cluster"}}
+        </button>
+        <button color="accent" *ngIf="this.SelectedPatients.length != 0" [disabled]="this.IsChoosingNewClusterForPatient || this.SelectedPatients.length <= 1" mat-flat-button (click)="CreateClusterFromSelectedPatients($event)">Create Cluster from Points</button>
       </div>
     </div>
-    <app-map #map></app-map>
+    
+    <div class="map-container">
+      <app-map #map></app-map>
+      <p class="reassign-cluster-prompt" *ngIf="this.IsChoosingNewClusterForPatient">Choose A Cluster</p>
+      <p class="unclustered-patients-prompt" *ngIf="this.HasInitializedMap && this.mapComponent.Clusters.length > 0">Unclustered Patients: {{this.mapComponent.UnclusteredPatientCount}}</p>
+      <button *ngIf="this.HasInitializedMap && this.mapComponent.CanUndo" color="accent" mat-raised-button (click)="RestoreClusters($event)">Undo</button>
+    </div>
   </div>
   <footer>
     <p>&#169; 2023 Trey Dettmer</p>

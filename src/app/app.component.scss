@@ -160,15 +160,101 @@ h1
     gap: 10px;
 }
 
+.content
+{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.side-panel
+{
+    width: 300px;
+    height: 60vh;
+    background-color: #e2e3e4;
+    margin: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+
+}
+
+.side-panel-footer
+{
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    background-color: #cccccc;
+    width: 100%;
+    justify-content: center;
+    margin-top: auto;
+    button
+    {
+        margin: 5px 0;
+    }
+}
+
+.side-panel-scrollbox
+{
+    width: 100%;
+    overflow-y: scroll;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0px 5px;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.side-panel-scrollbox::-webkit-scrollbar {
+    display: none;
+}
+
 .map-container
 {
     //box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     height: 60vh;
-    width: min(900px, 70vw);
+    width: min(900px, 60vw);
     align-self: center;
     padding: 0;
     margin: 10px;
     position: relative;
+
+    button 
+    {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        z-index: 400;
+    }
+}
+
+.reassign-cluster-prompt
+{
+    position: absolute;
+    top: 10px;
+    left: 20%;
+    right: 20%;
+    background-color: rgba(245, 245, 245, 0.95);
+    padding: 5px;
+    color: black;
+    z-index: 400;
+    text-align: center;
+}
+
+.unclustered-patients-prompt
+{
+    position: absolute;
+    bottom: 10px;
+    left: 30%;
+    right: 30%;
+    background-color: rgba(245, 245, 245, 0.805);
+    padding: 5px;
+    color: black;
+    z-index: 400;
+    text-align: center;
 }
 
 .map-legend
@@ -195,6 +281,7 @@ h1
     text-align: left;
     padding: 5px 5px;
 }
+
 #map
 {
     position: absolute;
@@ -211,3 +298,36 @@ footer
     padding: 1em 0;
     margin-top: auto;
 }
+
+::ng-deep .patient-icon
+{ 
+    background-color: #000000;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid #FFFFFF;
+    text-align: center;
+    color: white;
+    box-shadow: 2px 2px 3px grey;
+    z-index: 10;
+    transform-origin: bottom right;
+    position: absolute;
+    transition: all .2s ease-in-out;
+}
+
+::ng-deep .patient-icon.patient-icon-highlighted
+{ 
+    background-color: #ffd500 !important;
+    border: 1px solid #000000 !important;
+}
+
+::ng-deep .patient-icon.patient-icon-hovered
+{ 
+    background-color: #ff7300 !important;
+    border: 1px solid #000000 !important;
+    z-index: 10000 !important;
+    width: 15px !important;
+    height: 15px !important;
+    //transform: scale(1.1) !important;
+}
+

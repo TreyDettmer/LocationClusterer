@@ -1,0 +1,31 @@
+<div class="container">
+    <p class="name">Cluster {{this.cluster.patients.length}}</p>
+    <mat-checkbox 
+      [checked]="this.cluster.shouldDisplayArea"
+      (change)="this.cluster.shouldDisplayArea = $event.checked">
+      Display Area
+    </mat-checkbox>
+    <mat-checkbox
+      [checked]="this.cluster.shouldDisplayPatients"
+      (change)="this.cluster.shouldDisplayPatients = $event.checked"> 
+      Display Patients
+    </mat-checkbox>
+
+    <div *ngIf="this.cluster.milageEstimate < 0"  matTooltip="Can only calculate milage for clusters of size <12" matTooltipClass="primary-tooltip" matTooltipPosition="right" [matTooltipDisabled]="this.cluster.milageEstimate == -1 && this.cluster.patients.length < 12">
+    
+      <button class="milage-button" mat-flat-button matTooltipPosition="right" [matTooltipDisabled]="false" matTooltip="Milage" matTooltipClass="primary-tooltip" color="accent" [disabled]="this.cluster.milageEstimate != -1 || this.cluster.patients.length >= 12" (click)="GetClusterMilage($event)"> Get Milage </button>
+    </div>
+    <p *ngIf="this.cluster.milageEstimate >= 0 && this.cluster.patients.length > 1">Milage: {{this.cluster.milageEstimate}} miles</p>
+    <p *ngIf="this.cluster.diameter >= 0">Diameter: {{this.cluster.diameter}} miles</p>
+    <ng-container *ngIf="!this.cluster.hasBeenPartitioned">
+        <!-- <button mat-flat-button color="accent" class="auto-partition-button" *ngIf="this.cluster.leafletMarkerCluster !== undefined" (click)="AutoPartition($event)">Auto Partition</button> -->
+        <div class="kmeans-settings">
+            <button mat-flat-button color="accent" [disabled]="this.cluster.hasBeenPartitioned" (click)="RunKmeans($event)"> Partition Cluster </button>
+            <input type="number" matTooltipPosition="right" matTooltip="The number of partitions" matTooltipClass="primary-tooltip" [(ngModel)]="k">
+        </div>
+    </ng-container>
+
+    <button class="delete-button" color="warn" mat-flat-button (click)="DeleteCluster($event)"> Delete Cluster </button>
+
+
+</div>

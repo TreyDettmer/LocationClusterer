@@ -4,6 +4,9 @@ import { KMeans, setBackend, KNeighborsClassifier } from 'scikitjs';
 import * as tf from '@tensorflow/tfjs'
 import { Status, WorkerResponse } from './interfaces/worker-response';
 import * as turf from '@turf/turf';
+import { Patient } from './interfaces/patient';
+import kmeans from "kmeans-ts";
+//const skmeans = require("skmeans");
 
 /**
  * Gets distance in miles between two points on earth.
@@ -192,91 +195,175 @@ function RunDBScan(points : any, clusters : any) : [points : any,clusters : any]
   return [points,clusters];
 }
 
-function RunKmeans(numberOfClusters : number, points : any) : [points : any,clusters : any]
+function RunKmeans(k : number, patientLocations : any) : any
 {
-  if (points.length > 0)
-  {
-    if (points[0].length > 2)
-    {
-      // remove cluster previous labels
-      points = points.map(function(val: any[]) {
-        return val.slice(0, -1);
-      });
-    }
-  }
-  if (points[0].length > 2)
-  {
-    console.log(`Length is still greater than 2`);
-  }
-  let kmeans = new KMeans({nClusters:numberOfClusters,randomState:0}).fit(points);
-  let labels = kmeans.predict(points).arraySync();
-  //let uniqueLabelCount = new Set(labels).size;
-  let clusters = new Array(numberOfClusters);
-  for (let i = 0; i < clusters.length; i++)
-  {
-    clusters[i] = [];
-  }
-  //console.log("unique labels " + uniqueLabelCount);
 
-  for (let row = 0; row < points.length; row++)
-  {
-    let clusterIndex = labels[row];
-    try
-    {
-      
-      clusters[clusterIndex].push(points[row]);
-      points[row].push(clusterIndex); 
-    }
-    catch (error)
-    {
-      console.error(error);
-      console.log(`ClusterIndex: ${clusterIndex} clusters.length: ${clusters.length} points[row]: ${points[row]}`);
-      throw "error";
-    }
-
-  }
-  return [points,clusters];
+  let labels = new KMeans({nClusters:k,randomState:0}).fitPredict(patientLocations).arraySync();
+  return labels;
 }
 
-function CalculateKNeighbors(points : any)
+function RunKmeansReturningClusters(k : number, patientLocations : any) : any
 {
-  if (points.length > 0)
+
+  let kmeans = new KMeans({nClusters:k,randomState:0}).fit(patientLocations);
+  let labels = kmeans.predict(patientLocations).arraySync();
+  let clusters : any[] = [];
+  for (let i = 0; i < k; i++)
   {
-    if (points[0].length > 2)
+    clusters.push([]);
+  }
+
+  for (let i = 0; i < k; i++)
+  {
+    for (let j = 0; j < labels.length; j++)
     {
-      // remove cluster previous labels
-      points = points.map(function(val: any[]) {
-        return val.slice(0, -1);
-      });
+      if (labels[j] == i)
+      {
+        clusters[i].push(patientLocations[j]);
+      }
     }
   }
-  if (points[0].length > 2)
-  {
-    console.log(`Length is still greater than 2`);
-  }
-  let neighbors = new KNeighborsClassifier({nNeighbors:4});
-  //let neighborsFit = neighbors.fit(points);
 
+  return clusters;
 }
 
+function KMeansFromScratch(k : number, data : any[]) {
+  const centroids = data.slice(0, k);
+  const distances = Array.from({ length: data.length }, () =>
+    Array.from({ length: k }, () => 0)
+  );
+  const classes = Array.from({ length: data.length }, () => -1);
+  let itr = true;
+
+  while (itr) {
+    itr = false;
+
+    for (let d in data) {
+      for (let c = 0; c < k; c++) {
+        distances[d][c] = Math.hypot(
+          ...Object.keys(data[0]).map(key => data[d][key] - centroids[c][key])
+        );
+      }
+      const m = distances[d].indexOf(Math.min(...distances[d]));
+      if (classes[d] !== m) itr = true;
+      classes[d] = m;
+    }
+
+    for (let c = 0; c < k; c++) {
+      centroids[c] = Array.from({ length: data[0].length }, () => 0);
+      const size = data.reduce((acc, _, d) => {
+        if (classes[d] === c) {
+          acc++;
+          for (let i in data[0]) centroids[c][i] += data[d][i];
+        }
+        return acc;
+      }, 0);
+      for (let i in data[0]) {
+        centroids[c][i] = parseFloat(Number(centroids[c][i] / size).toFixed(2));
+      }
+    }
+  }
+
+  return classes;
+};
+
+function RunIterativeKmeans(clusterSize : number, patientLocations : any) : any[][] | null
+{
+
+  try
+  {
+
+
+    let cluster = JSON.parse(JSON.stringify(patientLocations));
+    let clusters : any[] = [];
+    console.log("starting");
+    let queue = [];
+    queue.push(cluster);
+    let kmeans = new KMeans({nClusters:2,randomState:0}).fit(cluster);
+    while (queue.length > 0)
+    {
+
+      cluster = queue[0];
+      //console.log(queue);
+      while (cluster.length > clusterSize)
+      {
+        // kmeans.fitPredict(cluster).arraySync();
+        // kmeans = new KMeans({nClusters:2,randomState:0}).fit(cluster);
+        // let labels = kmeans.predict(cluster).arraySync();
+        let labels = kmeans.fitPredict(cluster).arraySync();
+        //let labels = KMeansFromScratch(2,cluster);
+        //let d = kmeans(cluster,2,"kmeans++");
+        //let labels = d.indexes;
+        let newCluster = [];
+        let otherCluster = [];
+        for (let i = 0; i < labels.length; i++)
+        {
+          if (labels[i] == 0)
+          {
+            newCluster.push(cluster[i]);
+          }
+          else
+          {
+            otherCluster.push(cluster[i]);
+          }
+        }
+        labels = [];
+        if (cluster.length == newCluster.length)
+        {
+          break;
+        }
+        cluster = newCluster;
+        console.log(`Current Cluster length: ${cluster.length} Other cluster length: ${otherCluster.length}`);
+        queue.push(otherCluster);
+      }
+      clusters.push(cluster);
+      queue.splice(0,1);
+      console.log(`${clusters.length} clusters created. queue length: ${queue.length}`);
+    }
+    
+    console.log(clusters);
+    return clusters;
+
+  }
+  catch (error)
+  {
+    console.error(error);
+    return null;
+  }
+}
 
 
 addEventListener('message', ({ data }) => {
-  var points;
-  var clusters;
-  var minimumClusters;
-  setBackend(tf);
-  // var message = data.message;
-  // var returnedMessage = message + " hi";
-  points = data.points;
-  clusters = data.clusters;
-  minimumClusters = data.minimumClusters;
-  [points,clusters] = RunDBScan(data.points,data.clusters);
-  //[points,clusters,minimumClusters] = FindValidClusters(data.points,data.clusters,data.minimumClusters,data.maximumClusters,data.maxDistance);
 
-  const responseData = {points: points,clusters: clusters,minimumClusters:minimumClusters};
+  setBackend(tf);
+  // //let clusters = RunIterativeKmeans(10,data.patientLocations);
+  // let clusters = RunKmeansReturningClusters(10,data.patientLocations);
+  // console.log(clusters);
+
+
+  // const responseData = {clusters: clusters};
+  // let response : WorkerResponse = {};
+  // if (clusters != null)
+  // {
+  //   response.status = Status.Complete;
+  //   response.data = responseData;
+  // }
+  // else
+  // {
+  //   response.status = Status.Error;
+  //   response.message = `K means failed!`;
+  // }
+
+  // postMessage(response);
+
+
+
+
+
+  let labels = RunKmeans(data.k,data.patientLocations);
+  const responseData = {labels: labels};
   let response : WorkerResponse = {};
-  if (points != null)
+  if (labels != null)
   {
     response.status = Status.Complete;
     response.data = responseData;
@@ -284,7 +371,7 @@ addEventListener('message', ({ data }) => {
   else
   {
     response.status = Status.Error;
-    response.message = `Unable to find a valid cluster solution between ${data.minimumClusters} and ${data.maximumClusters} clusters`
+    response.message = `K means failed!`;
   }
 
   postMessage(response);

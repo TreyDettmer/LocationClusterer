@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, ViewChild} from '@angular/core';
+import { Component, AfterViewInit, ViewChild, Input} from '@angular/core';
 import { UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
 import { LoadLoggerService } from './services/load-logger.service';
 import { Status, WorkerResponse } from './interfaces/worker-response';
@@ -10,7 +10,9 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map, retry } from 'rxjs/operators';
 import { Patient } from './interfaces/patient';
-
+import { Cluster } from './interfaces/cluster';
+import * as L from 'leaflet';
+var polyUtil = require('polyline-encoded');
 
 @Component({
   selector: 'app-root',
@@ -36,19 +38,24 @@ export class AppComponent implements AfterViewInit{
 
   public ShowSpinner : boolean = false;
 
-  public HoveredClusterIndex : number = -1;
+  public SelectedCluster : Cluster | null = null;
+  public SelectedPatient : Patient | null = null;
+  public SelectedPatients : Patient[] = [];
+  public IsChoosingNewClusterForPatient : boolean = false;
 
-  public HoveredClusterDistance : number = -1;
-  public HoveredClusterTime : number = -1;
+  private timeOfLastBoxSelect : number = Date.now();
+
 
   @ViewChild('map') mapComponent! : MapComponent;
-
+  public HasInitializedMap = false;
   
 
   settingsForm : UntypedFormGroup = new UntypedFormGroup({
-    minimumClusterCount: new UntypedFormControl(5,[Validators.min(1)]),
-    maximumClusterCount: new UntypedFormControl(20,[Validators.max(80)]),
-    maxDistance: new UntypedFormControl(500,[Validators.min(1),Validators.max(1000)])
+    maxDiameter: new UntypedFormControl(10,[Validators.min(1),Validators.max(25),Validators.required]),
+  });
+
+  actionsForm : UntypedFormGroup = new UntypedFormGroup({
+    kmeansK : new UntypedFormControl(2,[Validators.min(2),Validators.max(20),Validators.required])
   });
 
   constructor(public loadLoggerService : LoadLoggerService, public dialog : MatDialog, private http: HttpClient)
@@ -64,71 +71,403 @@ export class AppComponent implements AfterViewInit{
       this.OnInnerClusterPointClicked(innerPointIndex,clusterIndex);
     });
 
-    this.mapComponent.OnClusterMouseOver.subscribe(({clusterIndex}) =>
+    this.mapComponent.OnClusterClicked.subscribe(({cluster}) =>
     {
-      if (this.HoveredClusterIndex != clusterIndex)
+      this.OnClusterClicked(cluster);
+    })
+
+    this.mapComponent.OnBoxSelect.subscribe(({bounds}) =>
+    {
+      this.OnBoxSelect(bounds);
+    }) 
+
+    this.mapComponent.OnPatientsClicked.subscribe(({patients, cluster}) =>
+    {
+      this.OnPatientsClicked(patients,cluster);
+    })
+
+    this.mapComponent.OnDeselect.subscribe(({}) =>
+    {
+      this.OnDeselect();
+    })
+    this.HasInitializedMap = true;
+
+
+
+
+  }
+
+  public GetClusterEstimatedMilage(event : any)
+  {
+    if (this.SelectedCluster == null || this.SelectedCluster.patients.length >= 12)
+    {
+      return;
+    }
+
+
+    // get cluster milage
+    this.GetClusterMilage(this.SelectedCluster).subscribe((data:any) => 
+    {
+      console.log(data);
+      if (data.code)
       {
-        this.HoveredClusterIndex = clusterIndex;
-        if (this.Clusters[clusterIndex])
+        if (data.code == "Ok")
         {
-          if (this.Clusters[clusterIndex].length < 12)
+          if (data.trips.length > 0)
           {
-            this.HoveredClusterDistance = Math.round((Math.random() * 30) * 10) / 10;
-            this.HoveredClusterTime = Math.round((this.HoveredClusterDistance / 30) * 10) / 10;
-            // // get cluster milage
-            // this.getClusterMilage(this.Clusters[clusterIndex]).subscribe((data:any) => 
-            // {
-            //   console.log(data);
-            //   if (data.code)
-            //   {
-            //     if (data.code == "Ok")
-            //     {
-            //       this.mapComponent.DrawRoute(data.waypoints);
-            //       if (data.trips.length > 0)
-            //       {
-            //         // 1609 is the number of meters in a mile
-            //         console.log(data.trips[0].distance / 1609);
-            //         let distance = Math.round((data.trips[0].distance / 1609) * 10) / 10;
-            //         this.HoveredClusterDistance = distance;
-            //       }
-            //     }
-            //     else
-            //     {
-            //       this.HoveredClusterDistance = -2;
-            //       console.log("mapbox API failure");
-            //     }
-            //   }
-            //   else
-            //   {
-            //     this.HoveredClusterDistance = -2;
-            //     console.log("mapbox API failure");
-            //   }
-              
-            // })
-          }
-          else
-          {
-            this.HoveredClusterDistance = -2;
-            this.HoveredClusterTime = -2;
-            //console.log("too big of cluster");
+            // 1609 is the number of meters in a mile
+            try
+            {
+              let latlngs = polyUtil.decode(data.trips[0].geometry)
+              this.mapComponent.DrawRoundTrip(latlngs);
+            }
+            catch (error)
+            {
+              console.log(error);
+            }
+            
+            console.log(data.trips[0].distance / 1609.34);
+            let distance = Math.round((data.trips[0].distance / 1609.34) * 10) / 10;
+            this.SelectedCluster!.milageEstimate = distance;
           }
         }
-        
+        else
+        {
+          console.log("mapbox API failure");
+        }
       }
-    });
+      else
+      {
+        console.log("mapbox API failure");
+      }
+      
+    })
 
-    this.mapComponent.OnClusterMouseLeave.subscribe(({clusterIndex}) =>
+  }
+
+  // nullifies selectedCluster and SelectedPatient
+  private OnDeselect()
+  {
+    if (Date.now() - this.timeOfLastBoxSelect < 500)
     {
-      //console.log("left");
-      this.HoveredClusterIndex = -1;
-      this.HoveredClusterDistance = -1;
-      this.HoveredClusterTime = -1;
+      return;
+    }
+    console.log("DESELECT");
 
-    });
+    if (this.SelectedCluster != null)
+    {
+      this.SelectedCluster.isHighlighted = false;
+      this.SelectedCluster.shouldDisplayArea = true;
+    }
+    
+    
+    this.CancelPatientSelection();
+    this.SelectedCluster = null;
+  }
+
+  public DeleteCluster(event : any)
+  {
+    event.preventDefault();
+    if (this.SelectedCluster == null)
+    {
+      return;
+    }
+    this.mapComponent.DeleteCluster(this.SelectedCluster);
+    this.SelectedCluster = null;
+  }
+
+  private CancelPatientSelection()
+  {
+    
+    for (let i = 0; i < this.SelectedPatients.length; i++)
+    {
+
+      try
+      {
+        this.SelectedPatients[i].marker.getElement()?.classList.remove('patient-icon-hovered','patient-icon-highlighted');
+      }
+      catch
+      {
+
+      }
+      
+    }
+    this.SelectedPatients = [];
+    this.SelectedPatient = null;
+  }
+
+  private OnClusterClicked(cluster: Cluster)
+  {
+    // when we release from the box select, we want to ignore the click from the end mouse release so we wait a little
+    if (Date.now() - this.timeOfLastBoxSelect < 500)
+    {
+      return;
+    }
+    console.log("cluster selected");
+    //console.log(cluster);
+    if (this.IsChoosingNewClusterForPatient)
+    {
+      this.OnPatientReassignConfirmation(cluster);
+      return;
+    }
+    this.CancelPatientSelection();
+    if (this.SelectedCluster != null)
+    {
+      this.SelectedCluster.isHighlighted = false;
+      this.SelectedCluster.shouldDisplayArea = true;
+    }
+    this.SelectedCluster = cluster;
+    this.SelectedCluster.isHighlighted = true;
+
+    
+  }
+
+  public OnPatientReassignRequest(event : any,patient : Patient | null)
+  {
+    event.preventDefault();
+    if (this.IsChoosingNewClusterForPatient)
+    {
+      this.IsChoosingNewClusterForPatient = false;
+      this.SelectedPatient = null;
+      return;
+      
+    }
+    this.IsChoosingNewClusterForPatient = true;
+    this.SelectedPatient = patient;
+
+  }
+
+  private OnPatientReassignConfirmation(newCluster : Cluster)
+  {
+    this.IsChoosingNewClusterForPatient = false;
+    if (this.SelectedPatient != null)
+    {
+      if (this.SelectedCluster == null)
+      {
+        console.log(`Patient__${this.SelectedPatient.patUID} in cluster_-1 reassigned to cluster_${newCluster.patients.length}`);
+        this.mapComponent.SwitchPatientsAssignedCluster([this.SelectedPatient],null,newCluster);
+      }
+      else
+      {
+        console.log(`Patient_${this.SelectedPatient.patUID} in cluster_${this.SelectedCluster.patients.length} reassigned to cluster_${newCluster.patients.length}`);
+        this.mapComponent.SwitchPatientsAssignedCluster([this.SelectedPatient],this.SelectedCluster,newCluster);
+      }
+    }
+    else if (this.SelectedPatients.length > 0)
+    {
+      
+      if (this.SelectedCluster == null)
+      {
+        console.log(`${this.SelectedPatients.length} Patients in cluster_-1 reassigned to cluster_${newCluster.patients.length}`);
+        this.mapComponent.SwitchPatientsAssignedCluster(this.SelectedPatients,null,newCluster);
+      }
+      else
+      {
+        console.log(`${this.SelectedPatients.length} Patients in cluster_${this.SelectedCluster.patients.length} reassigned to cluster_${newCluster.patients.length}`);
+        this.mapComponent.SwitchPatientsAssignedCluster(this.SelectedPatients,this.SelectedCluster,newCluster);
+      }
+
+
+    }
+    this.CancelPatientSelection();
+    this.OnDeselect();
+  }
+
+  private OnPatientsClicked(patients : Patient[], cluster : Cluster | null)
+  {
+    if (this.IsChoosingNewClusterForPatient)
+    {
+      return;
+    }
+    this.CancelPatientSelection();
+    for (let i = 0; i < this.SelectedPatients.length; i++)
+    {
+      try
+      {
+        this.SelectedPatients[i].marker.getElement()?.classList.remove('patient-icon-hovered','patient-icon-highlighted');
+      }
+      catch
+      {
+
+      }
+    }
+    this.SelectedPatients = [];
+    for (let i = 0; i < patients.length; i++)
+    {
+      try
+      {
+        patients[i].marker.getElement()?.classList.add('patient-icon-highlighted');
+      }
+      catch
+      {
+
+      }
+      
+      this.SelectedPatients.push(patients[i]);
+    }
+
+
+    if (cluster != null)
+    {
+      console.log(cluster);
+      if (this.SelectedCluster != null)
+      {
+        if (this.SelectedCluster != cluster)
+        {
+          // assign new selected cluster
+          this.SelectedCluster.isHighlighted = false;
+          cluster.isHighlighted = true;
+          this.SelectedCluster = cluster;
+        }
+      }
+      else
+      {
+        cluster.isHighlighted = true;
+        this.SelectedCluster = cluster;
+      }
+    }
+    else
+    {
+      console.log("cluster is null");
+      if (this.SelectedCluster != null)
+      {
+        this.SelectedCluster.isHighlighted = false;
+        this.SelectedCluster.shouldDisplayArea = true;
+        this.SelectedCluster = null;
+      }
+    }
+    return;
+    const dialogRef = this.dialog.open(ClusterSwitcherDialogComponent,
+      {
+        data: {currentClusterIndex: 0, newClusterIndex: 0}
+      });
+    dialogRef.afterClosed().subscribe(result =>
+      {
+        if (result !== undefined)
+        {
+          
+          // if (result != clusterIndex)
+          // {
+          //   if (result >= 0 && result < this.Clusters.length)
+          //   {
+          //     // update with new cluster value
+          //     this.dataFrameLocations[indexInDataframe][2] = result;
+          //     this.Clusters[result].push([location[0],location[1]]);
+          //     this.Clusters[clusterIndex].splice(innerPointIndex,1);
+          //     //this.mapComponent.UpdateMapMarkers(this.Clusters);
+          //     this.mapComponent.DisplayPointsInCluster(this.Clusters,result);
+          //   }
+          // }
+        }
+      })
+  }
+
+  private OnBoxSelect(boxBounds : L.LatLngBounds )
+  {
+
+    // get the patients within the bounds
+    let boundedPatients : Patient[] = [];
+    for (let i = 0; i < this.patients.length; i++)
+    {
+      if (boxBounds.contains(this.patients[i].location))
+      {
+        boundedPatients.push(this.patients[i]);
+      }
+    }
+
+    // remove patients that are not visible
+    for (let patientIndex = boundedPatients.length - 1; patientIndex >= 0; patientIndex--)
+    {
+      for (let clusterIndex = 0; clusterIndex < this.mapComponent.Clusters.length; clusterIndex++)
+      {
+        if (this.mapComponent.Clusters[clusterIndex].patients.includes(boundedPatients[patientIndex]) && !this.mapComponent.Clusters[clusterIndex].shouldDisplayPatients)
+        {
+          boundedPatients.splice(patientIndex,1);
+          break;
+        }
+      }
+    }
+
+    if (boundedPatients.length == 0)
+    {
+      for (let i = 0; i < this.SelectedPatients.length; i++)
+      {
+  
+        try
+        {
+          this.SelectedPatients[i].marker.getElement()?.classList.remove('patient-icon-hovered','patient-icon-highlighted');
+        }
+        catch
+        {
+  
+        }
+      }
+      this.SelectedPatients = [];
+      return;
+    }
+    
 
 
 
 
+    // ensure that the bounded patients are within the same cluster
+    let chosenCluster : Cluster | null = null;
+    for (let i = 0; i < this.mapComponent.Clusters.length; i++)
+    {
+      for (let j = 0; j < boundedPatients.length; j++)
+      {
+        if (this.mapComponent.Clusters[i].patients.includes(boundedPatients[j]))
+        {
+          if (chosenCluster != null && chosenCluster != this.mapComponent.Clusters[i])
+          {
+            console.log("points in different clusters")
+            return;
+          }
+          let c = this.mapComponent.Clusters[i];
+          chosenCluster = c;
+        }
+      }
+    }
+
+    // select the cluster of the bounded patients
+    if (this.SelectedCluster == null)
+    {
+      this.SelectedCluster = chosenCluster;
+      if (this.SelectedCluster != null)
+      {
+        this.SelectedCluster.isHighlighted = true;
+      }
+    }
+    else
+    {
+      this.SelectedCluster.isHighlighted = false;
+      this.SelectedCluster = chosenCluster;
+      if (this.SelectedCluster != null)
+      {
+        this.SelectedCluster.isHighlighted = true;
+      }
+    }
+
+    this.timeOfLastBoxSelect = Date.now();
+
+    // add bounded patients to the BoxSelectPatients array
+    for (let i = 0; i < boundedPatients.length; i++)
+    {
+      this.SelectedPatients.push(boundedPatients[i]);
+    }
+    this.SelectedPatients = Array.from(new Set(this.SelectedPatients));
+    for (let i = 0; i < this.SelectedPatients.length; i++)
+    {
+      try
+      {
+        this.SelectedPatients[i].marker.getElement()?.classList.add('patient-icon-highlighted');
+      }
+      catch
+      {
+
+      }
+      
+    }
   }
 
   private OnInnerClusterPointClicked(innerPointIndex : number,clusterIndex : number)
@@ -242,9 +581,86 @@ export class AppComponent implements AfterViewInit{
     fileReader.readAsText(this.UploadedFile); 
   }
 
-  RunKmeans()
+  public CreateClusterFromSelectedPatients(event : any)
   {
+    event.preventDefault();
+    if (this.SelectedPatients.length <= 1)
+    {
+      return;
+    }
 
+    this.mapComponent.CreateClusterFromSelectedPatients(this.SelectedPatients);
+
+    this.CancelPatientSelection();
+
+  }
+
+  public AutoPartitionCluster(event : any)
+  {
+    if (this.SelectedCluster == null)
+    {
+      return;
+    }
+    this.mapComponent.PartitionCluster(this.SelectedCluster);
+  }
+
+  public RunKmeans(event : any,k:number)
+  {
+    event.preventDefault();
+    if (this.SelectedCluster == null)
+    {
+      return;
+    }
+    this.ShowSpinner = true;
+    this.loadLoggerService.LogMessage("");
+    let patientLocations = [];
+    for (let i = 0; i< this.SelectedCluster.patients.length; i++)
+    {
+      patientLocations.push(this.SelectedCluster.patients[i].location);
+    }
+    if (typeof Worker !== 'undefined') {
+      // Create a new web worker to do the calculations
+      const worker = new Worker(new URL('./app.worker', import.meta.url));
+      worker.onmessage = ({data}) => {
+        let workerResponse = data as WorkerResponse;
+        if (workerResponse.status == Status.Progess)
+        {
+          this.loadLoggerService.LogMessage(workerResponse.message || "");
+        }
+        else if (workerResponse.status == Status.Error)
+        {
+          this.loadLoggerService.LogMessage(workerResponse.message || "",true);
+          this.ShowSpinner = false;
+        }
+        else
+        {
+          let labels = workerResponse.data.labels;
+
+          console.log(labels);
+          if (this.SelectedCluster != null)
+          {
+            this.SelectedCluster.isHighlighted = false;
+            this.mapComponent.HandleKmeansResults(this.SelectedCluster,k,labels);
+            this.SelectedCluster = null;
+          }
+          //this.mapComponent.UpdateMapMarkers(this.Clusters);
+          this.loadLoggerService.LogMessage("");
+          this.ShowSpinner = false;
+        }
+
+
+      };
+      worker.postMessage({
+        k:k,
+        patientLocations:patientLocations
+      });
+    } else {
+      // Web workers are not supported in this environment.
+      // You should add a fallback so that your program still executes correctly.
+      console.warn("Workers aren't available");
+      this.loadLoggerService.LogMessage("Web Workers are unavailable in your browser",true);
+      this.ShowSpinner = false;
+    }
   }
 
 
@@ -252,16 +668,46 @@ export class AppComponent implements AfterViewInit{
   // called when user clicks on 'save clustered data'
   public SaveFile()
   {
+    if (this.mapComponent.GetUnclusteredPatientCount() > 0)
+    {
+      alert("Every patient must be assigned to a cluster");
+      return;
+    }
     function arrayToCSV (data : any) {
       let csv = data.map((row : any) => Object.values(row));
       csv.unshift(Object.keys(data[0]));
       return `${csv.join('\n').replace(/,/g, ',')}`;
     }
 
+    let clusters : Cluster[] = this.mapComponent.Clusters;
+
     // add new cluster column to dataframe
     for (let i = 0; i < this.dataFrame.length; i++)
     {
-      this.dataFrame[i]["cluster"] = this.dataFrameLocations[i][2];
+      let clusterIndex = 0;
+      let patUID : string = this.dataFrame[i]["PatUID"] as string;
+      let foundClusterWithPatient : boolean = false;
+      for (clusterIndex = 0; clusterIndex < clusters.length; clusterIndex++)
+      {
+        let index = clusters[clusterIndex].patients.findIndex(patient => {
+          return patient.patUID === patUID;
+        })
+        if (index >= 0)
+        {
+          foundClusterWithPatient = true;
+          break;
+        }
+        
+      }
+      if (foundClusterWithPatient)
+      {
+        this.dataFrame[i]["cluster"] = clusterIndex;
+      }
+      else
+      {
+        console.log(`Lost patient ${patUID}`);
+      }
+      
     }
 
     let fileName = "ClusteredData.csv";
@@ -283,6 +729,12 @@ export class AppComponent implements AfterViewInit{
         this.dataFrame[i]["cluster"] = 0;
       }
     }
+  }
+
+  public RestoreClusters(event : any)
+  {
+    this.OnDeselect();
+    this.mapComponent.RestoreClusters();
   }
 
   private isValidCsvFile() : boolean
@@ -342,71 +794,87 @@ export class AppComponent implements AfterViewInit{
       alert("No data to cluster");
       return;
     }
-    // if (this.settingsForm.controls["minimumClusterCount"].value >= this.settingsForm.controls["maximumClusterCount"].value)
-    // {
-    //   alert("Minimum Clusters must be less than Maximum Clusters");
 
-    //   return;
+    // this.ShowSpinner = true;
+    // this.loadLoggerService.LogMessage("");
+    // let k = 2;
+    // let patientLocations = [];
+    
+    // for (let i = 0; i< this.patients.length; i++)
+    // {
+    //   patientLocations.push(this.patients[i].location);
     // }
+    // if (typeof Worker !== 'undefined') {
+    //   // Create a new web worker to do the calculations
+    //   const worker = new Worker(new URL('./app.worker', import.meta.url));
+    //   worker.onmessage = ({data}) => {
+    //     let workerResponse = data as WorkerResponse;
+    //     if (workerResponse.status == Status.Progess)
+    //     {
+    //       this.loadLoggerService.LogMessage(workerResponse.message || "");
+    //     }
+    //     else if (workerResponse.status == Status.Error)
+    //     {
+    //       this.loadLoggerService.LogMessage(workerResponse.message || "",true);
+    //       this.ShowSpinner = false;
+    //     }
+    //     else
+    //     {
+
+    //       let clusters = workerResponse.data.clusters;
+    //       this.loadLoggerService.LogMessage("");
+    //       this.ShowSpinner = false;
+    //       this.mapComponent.DrawClusters(clusters);
+
+
+
+
+    //       // let labels = workerResponse.data.labels;
+
+    //       // console.log(labels);
+    //       // if (this.SelectedCluster != null)
+    //       // {
+    //       //   this.SelectedCluster.isHighlighted = false;
+    //       //   this.mapComponent.HandleKmeansResults(this.SelectedCluster,k,labels);
+    //       //   this.SelectedCluster = null;
+    //       // }
+    //       // this.mapComponent.UpdateMapMarkers(this.Clusters);
+    //       // this.loadLoggerService.LogMessage("");
+    //       // this.ShowSpinner = false;
+    //     }
+
+
+    //   };
+    //   worker.postMessage({
+    //     k:k,
+    //     patientLocations:patientLocations
+    //   });
+    // } else {
+    //   // Web workers are not supported in this environment.
+    //   // You should add a fallback so that your program still executes correctly.
+    //   console.warn("Workers aren't available");
+    //   this.loadLoggerService.LogMessage("Web Workers are unavailable in your browser",true);
+    //   this.ShowSpinner = false;
+    // }
+    this.OnDeselect();
 
     this.mapComponent.ClearMarkers();
-    this.mapComponent.CreateMarkerClusters(this.patients);
+    // we subtract from the provided diameter value because the leaflet marker clusterer doesn't strictly enforce the given diameter
+    let diameter = this.settingsForm.controls["maxDiameter"].value - 1.5;
+    diameter = Math.max(1.0, diameter);
+    this.mapComponent.CreateMarkerClusters(this.patients,diameter / 2.0);
     return;
-    this.Clusters = [];
-    this.resetClusterValues();
-    this.ShowSpinner = true;
-    this.loadLoggerService.LogMessage("");
-    if (typeof Worker !== 'undefined') {
-      // Create a new web worker to do the calculations
-      const worker = new Worker(new URL('./app.worker', import.meta.url));
-      worker.onmessage = ({data}) => {
-        let workerResponse = data as WorkerResponse;
-        if (workerResponse.status == Status.Progess)
-        {
-          this.loadLoggerService.LogMessage(workerResponse.message || "");
-        }
-        else if (workerResponse.status == Status.Error)
-        {
-          this.loadLoggerService.LogMessage(workerResponse.message || "",true);
-          this.ShowSpinner = false;
-        }
-        else
-        {
-          this.dataFrameLocations = workerResponse.data.points;
-          this.Clusters = workerResponse.data.clusters;
-          this.mapComponent.ClearMarkers();
-          console.log(this.Clusters);
-          //this.mapComponent.UpdateMapMarkers(this.Clusters);
-          this.loadLoggerService.LogMessage("");
-          this.ShowSpinner = false;
-        }
-
-
-      };
-      worker.postMessage({
-        points:this.dataFrameLocations,
-        clusters:this.Clusters,
-        minimumClusters:this.settingsForm.controls["minimumClusterCount"].value,
-        maximumClusters: this.settingsForm.controls["maximumClusterCount"].value, 
-        maxDistance: this.settingsForm.controls["maxDistance"].value 
-      });
-    } else {
-      // Web workers are not supported in this environment.
-      // You should add a fallback so that your program still executes correctly.
-      console.warn("Workers aren't available");
-      this.loadLoggerService.LogMessage("Web Workers are unavailable in your browser",true);
-      this.ShowSpinner = false;
-    }
+    
   }
 
-  getClusterMilage(cluster : any) : Observable<any>
+  private GetClusterMilage(cluster : Cluster) : Observable<any>
   {
 
     let locationsArray = [];
-    for (let i = 0; i < cluster.length; i++)
+    for (let i = 0; i < cluster.patients.length; i++)
     {
       //mapbox expects longitude then latitude
-      locationsArray.push([cluster[i][1],cluster[i][0]]);
+      locationsArray.push([cluster.patients[i].longitude,cluster.patients[i].latitude]);
     }
     //mapbox expects longitude then latitude
     //locationsArray = [[45.576132, -122.728306],[45.559022,-122.645381],[45.474393,-122.636938]];

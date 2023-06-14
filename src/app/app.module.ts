@@ -15,13 +15,18 @@ import {MatDialogModule} from '@angular/material/dialog';
 import { ClusterSwitcherDialogComponent } from './components/cluster-switcher-dialog/cluster-switcher-dialog.component';
 import { HttpClientModule } from '@angular/common/http';
 import { LeafletMarkerClusterModule } from '@asymmetrik/ngx-leaflet-markercluster';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { PatientPanelComponent } from './components/patient-panel/patient-panel.component';
+import { ClusterPanelComponent } from './components/cluster-panel/cluster-panel.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     LoadingSpinnerComponent,
     MapComponent,
-    ClusterSwitcherDialogComponent
+    ClusterSwitcherDialogComponent,
+    PatientPanelComponent,
+    ClusterPanelComponent
   ],
   imports: [
     BrowserModule,
@@ -35,7 +40,8 @@ import { LeafletMarkerClusterModule } from '@asymmetrik/ngx-leaflet-markercluste
     MatTooltipModule,
     MatDialogModule,
     HttpClientModule,
-    LeafletMarkerClusterModule
+    LeafletMarkerClusterModule,
+    MatCheckboxModule
   ],
   providers: [],
   bootstrap: [AppComponent]
