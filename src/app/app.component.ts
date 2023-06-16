@@ -847,11 +847,6 @@ export class AppComponent implements AfterViewInit{
       ,100
       );
     }
-
-
-    
-
-
     return;
     
   }
