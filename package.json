@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build --output-path dist --base-href /location-clusterer/",
+    "build": "ng build --output-path dist --base-href /LocationClusterer/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
