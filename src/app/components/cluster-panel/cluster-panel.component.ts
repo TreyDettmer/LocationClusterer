@@ -11,6 +11,8 @@ export class ClusterPanelComponent {
   @Input() cluster! : Cluster;
   @Input() appComponent! : AppComponent;
   public k : number = 2;
+  public rows : number = 2;
+  public columns : number = 2;
 
   public RunKmeans(event : any)
   {
@@ -34,5 +36,15 @@ export class ClusterPanelComponent {
   public DeleteCluster(event : any)
   {
     this.appComponent.DeleteCluster(event);
+  }
+
+  public RunGridCluster(event : any)
+  {
+    this.appComponent.RunGridCluster(event,this.rows,this.columns);
+  }
+
+  public AreGridSettingsValid()
+  {
+    return !(this.rows < 1 || this.rows >  8 || this.columns < 1 || this.columns > 8 || this.rows == null || this.columns == null || (this.rows == 1 && this.columns == 1))
   }
 }

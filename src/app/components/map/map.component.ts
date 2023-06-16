@@ -28,9 +28,11 @@ export class MapComponent implements AfterViewInit {
   public Clusters : Cluster[] = [];
   public Patients : Patient[] = [];
   private previousClusters : Cluster[] = [];
+  private previousUnclusteredPatients : Patient[] = [];
 
   public CanUndo : boolean = false;
   public UnclusteredPatientCount : number = 1;
+  public PatientsAreVisible : boolean = false;
 
   private miniMarkers : L.FeatureGroup = new L.FeatureGroup();
 
@@ -40,7 +42,6 @@ export class MapComponent implements AfterViewInit {
 
   private startingPatientCount : number = 0;
   
-  @Output() OnInnerClusterPointClicked = new EventEmitter<{innerPointIndex : number, clusterIndex : number}>();
   @Output() OnClusterClicked = new EventEmitter<{cluster : Cluster}>();
   @Output() OnPatientsClicked= new EventEmitter<{patients: Patient[],cluster : Cluster | null}>();
   @Output() OnBoxSelect = new EventEmitter<{bounds : L.LatLngBounds}>();
@@ -55,6 +56,7 @@ export class MapComponent implements AfterViewInit {
     this.polygonColorGradient.setSpectrum("#ff0000","#640000");
     this.initMap();
   }
+
 
   private initMap(): void 
   {
@@ -112,6 +114,11 @@ export class MapComponent implements AfterViewInit {
     Cluster.Map = this.map;
   }
 
+  public AreMappedPolygonsVisible() : boolean
+  {
+    return this.map.hasLayer(Cluster.MappedPolygons);
+  }
+
   private StorePreviousClusters()
   {
     this.previousClusters = [];
@@ -120,6 +127,34 @@ export class MapComponent implements AfterViewInit {
       let oldCluster = this.Clusters[i];
       let newCluster = this.CloneCluster(oldCluster);
       this.previousClusters.push(newCluster);
+    }
+    this.previousUnclusteredPatients = [];
+    for (let i = 0; i < this.Patients.length; i++)
+    {
+      let isUnclustered = true;
+      for (let j = 0; j < this.Clusters.length; j++)
+      {
+        if (this.Clusters[j].patients.includes(this.Patients[i]))
+        {
+          isUnclustered = false;
+          break;
+        }
+      }
+      if (isUnclustered)
+      {
+        let patient = this.Patients[i];
+        this.previousUnclusteredPatients.push(patient);
+      }
+    }
+    for (let i = this.Clusters.length - 1; i >= 0; i--)
+    {
+      if (this.Clusters[i].patients.length <= 0)
+      {
+        let cluster = this.Clusters[i];
+        this.Clusters.splice(i,1);
+        cluster.Destroy();
+        continue;
+      }
     }
   }
 
@@ -150,11 +185,21 @@ export class MapComponent implements AfterViewInit {
       newCluster.polygon = clusterPolygon;
       this.Clusters.push(newCluster);
     }
+    console.log(this.previousUnclusteredPatients);
+    for (let i = 0; i < this.previousUnclusteredPatients.length; i++)
+    {
+      let patientMarker = this.previousUnclusteredPatients[i].marker;
+      if (!this.map.hasLayer(patientMarker))
+      {
+        patientMarker.addTo(this.map);
+      }
+      patientMarker.setOpacity(1.0);
+    }
+    this.previousUnclusteredPatients = [];
     this.previousClusters = [];
 
     // redraw stuff
     this.OnZoomChanged();
-    this.largeClusterGroup.refreshClusters();
     console.log(this.Clusters);
     this.GetUnclusteredPatientCount();
   }
@@ -198,6 +243,14 @@ export class MapComponent implements AfterViewInit {
 
   }
 
+  public HideAllDisplayedClusteredPatients()
+  {
+    for (let i = 0; i < this.Clusters.length; i++)
+    {
+      this.Clusters[i].shouldDisplayPatients = false;
+    }
+  }
+
 
   public DeleteCluster(cluster : Cluster)
   {
@@ -206,6 +259,7 @@ export class MapComponent implements AfterViewInit {
     {
       return;
     }
+    this.StorePreviousClusters();
     this.Clusters.splice(clusterIndex,1);
     let patients = cluster.patients;
     for (let i = 0; i < patients.length; i++)
@@ -217,6 +271,8 @@ export class MapComponent implements AfterViewInit {
       patients[i].marker.setOpacity(1.0);
     }
     cluster.Destroy();
+    this.GetUnclusteredPatientCount();
+    this.CanUndo = true;
   }
 
   private CreateBoxSelectHandler()
@@ -365,9 +421,343 @@ export class MapComponent implements AfterViewInit {
     this.map.panTo(latLng);
   }
 
-  public CreateClusterFromSelectedPatients(patients : Patient[])
+  public async CreateClustersFromPatientGroups(patientGroups : Patient[][], allPatients : Patient[], unclusteredPatients : Patient[])
   {
+    if (this.Patients.length != 0)
+    {
+      for (let i = 0; i < this.Patients.length; i++)
+      {
+        let patientMarker = this.Patients[i].marker;
+        try
+        {
+          patientMarker.removeFrom(this.map);
+        }
+        catch
+        {
+
+        }
+      }
+    }
+    this.Patients = allPatients;
+    this.Clusters = [];
+    this.ClearMarkers();
+
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    this.map.fitBounds(this.GetBoundsOfPatients(allPatients).pad(0.05));
+    await delay(1000);
+
+    for (let i = 0; i < allPatients.length; i++)
+    {
+      let patient = allPatients[i];
+      let marker = new PatientMarker(patient.location,patient,{icon:Patient.DefaultIcon});
+      patient.marker = marker;
+      marker.on("click",(m) =>
+      {
+        if (!marker)
+        {
+          return;
+        }
+  
+        let overlappingPatients = [];
+        overlappingPatients.push(patient);
+        for (let patientIndex = 0; patientIndex < this.Patients.length; patientIndex++)
+        {
+          let p = this.Patients[patientIndex];
+          if (p == patient)
+          {
+            continue;
+          }
+          if (p.longitude == patient.longitude && p.latitude == patient.latitude)
+          {
+            overlappingPatients.push(p);
+            //console.log("FOUND MATCH!");
+          }
+        }
+
+        // check if the overlapping patients belong to the same cluster
+        let sharedCluster = null;
+        for (let patientIndex = 0; patientIndex < overlappingPatients.length; patientIndex++)
+        {
+          let p = overlappingPatients[patientIndex];
+          let shouldBreakOutOfLoop = false;
+          for (let clusterIndex = 0; clusterIndex < this.Clusters.length; clusterIndex++)
+          {
+            let c = this.Clusters[clusterIndex];
+            if (c.patients.includes(p))
+            {
+              if (sharedCluster == null)
+              {
+                sharedCluster = c;
+
+              }
+              else if (sharedCluster != c)
+              {
+                sharedCluster = null;
+                shouldBreakOutOfLoop = true;
+                break;
+              }
+            }
+            
+          }
+          if (shouldBreakOutOfLoop)
+          {
+            break;
+          }
+        }
+  
+  
+        // if we can't see the patients then just select the cluster
+        if (sharedCluster != null && !sharedCluster.shouldDisplayPatients)
+        {
+          this.OnClusterClicked.emit({cluster:sharedCluster});
+        }
+        else
+        {
+          this.OnPatientsClicked.emit({patients:overlappingPatients,cluster:sharedCluster});
+        }
+      });
+    }
+
+
+
+
+    for (let i = 0; i < patientGroups.length; i++)
+    {
+      if (patientGroups[i].length == 0)
+      {
+        continue;
+      }
+      let patients = patientGroups[i];
+      let cluster = new Cluster();
+      cluster.mapComponent = this;
+      for (let i = 0; i < patients.length; i++)
+      {
+        cluster.patients.push(patients[i]);
+      }
+      cluster.color = '#' + this.polygonColorGradient.colourAt(cluster.patients.length);
+      let pointsForPolygon = this.GetPointsForPolygon(cluster);
+      let hull = this.CalculatePolygonHull(pointsForPolygon);
+      let scaledHull = this.GetScaledHull(hull);
+      cluster.shape = scaledHull;
+      cluster.CalculateDiameter();
+      
+      let clusterPolygon = L.polygon(cluster.shape,{color:`${cluster.color}`,weight:2});
+      clusterPolygon.on("click",()=>
+      {
+        this.OnClusterClicked.emit({cluster: cluster});  
+      });
+      cluster.polygon = clusterPolygon;
+      cluster.milageEstimate = -1;
+      this.Clusters.push(cluster);
+    }
+    for (let i = 0; i < unclusteredPatients.length; i++)
+    {
+      
+      
+      if (!this.map.hasLayer(unclusteredPatients[i].marker))
+      {
+        unclusteredPatients[i].marker.addTo(this.map);
+      }   
+      unclusteredPatients[i].marker.setOpacity(1.0);  
+    }
+
+    this.startingPatientCount = this.Patients.length;
+    this.CreatePatientsMapMask();
+    this.UpdateClusterColors();
+    this.CanUndo = false;
+    // redraw stuff
+    this.OnZoomChanged();
+    console.log(this.Clusters);
+    this.GetUnclusteredPatientCount();
+  }
+
+
+  public AutoAssignUnclusteredPatients()
+  {
+    if (this.GetUnclusteredPatientCount() == 0)
+    {
+      return;
+    }
     this.StorePreviousClusters();
+
+    // get unclustered patients
+    let unclusteredPatients = [];
+    for (let patientIndex = 0; patientIndex < this.Patients.length; patientIndex++)
+    {
+      let isClustered = false;
+      for (let clusterIndex = 0; clusterIndex < this.Clusters.length; clusterIndex++)
+      {
+        if (this.Clusters[clusterIndex].patients.includes(this.Patients[patientIndex]))
+        {
+          isClustered = true;
+          break;
+        }
+      }
+      if (!isClustered)
+      {
+        let patient = this.Patients[patientIndex];
+        unclusteredPatients.push(patient);
+      }
+    }
+
+
+    function squareDistance(point1 : L.LatLng, point2 : L.LatLng)
+    {
+      return Math.pow(point2.lat - point1.lat,2) + Math.pow(point2.lng - point1.lng,2);
+    }
+
+    // assign each point to its closest cluster
+    for (let patientIndex = 0; patientIndex < unclusteredPatients.length; patientIndex++)
+    {
+      let patient = unclusteredPatients[patientIndex];
+      let patientLocation = L.latLng(patient.location);
+      let closestCluster = this.Clusters[0];
+      let closestDistance = 0;
+      if (this.map.hasLayer(this.Clusters[0].polygon))
+      {
+        closestDistance = squareDistance(patientLocation,this.Clusters[0].polygon.getCenter());
+      }
+      else
+      {
+        this.Clusters[0].polygon.addTo(this.map);
+        closestDistance = squareDistance(patientLocation,this.Clusters[0].polygon.getCenter());
+        this.Clusters[0].polygon.removeFrom(this.map);
+      }
+      
+      for (let clusterIndex = 1; clusterIndex < this.Clusters.length; clusterIndex++)
+      {
+        let cluster = this.Clusters[clusterIndex];
+        let d = 0;
+        if (this.map.hasLayer(cluster.polygon))
+        {
+          d = squareDistance(patientLocation,cluster.polygon.getCenter());
+        }
+        else
+        {
+          cluster.polygon.addTo(this.map);
+          d = squareDistance(patientLocation,cluster.polygon.getCenter());
+          cluster.polygon.removeFrom(this.map);
+        }
+        if (d < closestDistance)
+        {
+          closestDistance = d;
+          closestCluster = cluster;
+        }
+      }
+
+      closestCluster.patients.push(patient);
+      closestCluster.color = '#' + this.polygonColorGradient.colourAt(closestCluster.patients.length);
+      let pointsForPolygon = this.GetPointsForPolygon(closestCluster);
+      let hull = this.CalculatePolygonHull(pointsForPolygon);
+      let scaledHull = this.GetScaledHull(hull);
+      closestCluster.shape = scaledHull;
+      closestCluster.CalculateDiameter();
+      
+      let clusterPolygon = L.polygon(closestCluster.shape,{color:`${closestCluster.color}`,weight:2});
+      clusterPolygon.on("click",()=>
+      {
+        this.OnClusterClicked.emit({cluster: closestCluster});  
+      });
+      closestCluster.polygon = clusterPolygon;
+      closestCluster.milageEstimate = -1;
+
+    }
+    // redraw stuff
+    this.OnZoomChanged();
+    console.log(this.Clusters);
+    this.CanUndo = true;
+    this.GetUnclusteredPatientCount();
+    this.UpdateClusterColors();
+
+  }
+
+  public CreateGridClustersFromPatientGroups(patientGroups : Patient[][],oldCluster : Cluster, shouldStorePreviousClusters : boolean = true)
+  {
+    if (shouldStorePreviousClusters)
+    {
+      this.StorePreviousClusters();
+    }
+    
+    console.log(this.Clusters);
+
+    // remove patients from their original cluster
+    for (let n = 0; n < patientGroups.length; n++)
+    {
+      let patients = patientGroups[n]
+      for (let i = 0; i < patients.length; i++)
+      {
+
+        let indexOfPatientInCluster = oldCluster.patients.indexOf(patients[i]);
+        if (indexOfPatientInCluster >= 0)
+        {
+          oldCluster.patients.splice(indexOfPatientInCluster,1);
+        }
+        
+      }
+    }
+
+    this.ReconfigureClusterShape(oldCluster);
+
+    // remove old cluster
+    if (oldCluster.patients.length == 0)
+    {
+      let clusterIndex = this.Clusters.indexOf(oldCluster);
+      this.Clusters.splice(clusterIndex,1);
+      oldCluster.Destroy();
+    }
+    else
+    {
+      console.warn("old cluster somehow still has patients");
+    }
+
+    for (let i = 0; i < patientGroups.length; i++)
+    {
+      if (patientGroups[i].length == 0)
+      {
+        continue;
+      }
+      let patients = patientGroups[i];
+      let cluster = new Cluster();
+      cluster.mapComponent = this;
+      for (let i = 0; i < patients.length; i++)
+      {
+        cluster.patients.push(patients[i]);
+      }
+      cluster.color = '#' + this.polygonColorGradient.colourAt(cluster.patients.length);
+      let pointsForPolygon = this.GetPointsForPolygon(cluster);
+      let hull = this.CalculatePolygonHull(pointsForPolygon);
+      let scaledHull = this.GetScaledHull(hull);
+      cluster.shape = scaledHull;
+      cluster.CalculateDiameter();
+      
+      let clusterPolygon = L.polygon(cluster.shape,{color:`${cluster.color}`,weight:2});
+      clusterPolygon.on("click",()=>
+      {
+        this.OnClusterClicked.emit({cluster: cluster});  
+      });
+      cluster.polygon = clusterPolygon;
+      cluster.milageEstimate = -1;
+      this.Clusters.push(cluster);
+    }
+
+    // redraw stuff
+    this.OnZoomChanged();
+    console.log(this.Clusters);
+    if (shouldStorePreviousClusters)
+    {
+      this.CanUndo = true;
+    }
+    this.GetUnclusteredPatientCount();
+    
+  }
+
+  public CreateClusterFromSelectedPatients(patients : Patient[], shouldStorePreviousClusters : boolean = true)
+  {
+    if (shouldStorePreviousClusters)
+    {
+      this.StorePreviousClusters();
+    }
+    
     console.log(this.Clusters);
     let affectedClusters = [];
     // remove patients from their original cluster
@@ -428,9 +818,11 @@ export class MapComponent implements AfterViewInit {
 
     // redraw stuff
     this.OnZoomChanged();
-    this.largeClusterGroup.refreshClusters();
     console.log(this.Clusters);
-    this.CanUndo = true;
+    if (shouldStorePreviousClusters)
+    {
+      this.CanUndo = true;
+    }
     this.GetUnclusteredPatientCount();
   }
 
@@ -448,6 +840,10 @@ export class MapComponent implements AfterViewInit {
         {
           cluster.patients.push(originalCluster.patients[patientIndex])
         }
+      }
+      if (cluster.patients.length == 0)
+      {
+        continue;
       }
       cluster.color = '#' + this.polygonColorGradient.colourAt(cluster.patients.length);
       let pointsForPolygon = this.GetPointsForPolygon(cluster);
@@ -475,7 +871,6 @@ export class MapComponent implements AfterViewInit {
 
     // redraw stuff
     this.OnZoomChanged();
-    this.largeClusterGroup.refreshClusters();
     console.log(this.Clusters);
     this.CanUndo = true;
     this.GetUnclusteredPatientCount();
@@ -504,6 +899,16 @@ export class MapComponent implements AfterViewInit {
     {
       scaledHull[i] = this.GetScaledPoint(scaledHull[i],center,scaleFactor);
     }
+    polygon = L.polygon(scaledHull,{weight:1});
+    let area = Math.abs(polygon.getBounds().getNorth() - polygon.getBounds().getSouth()) * Math.abs(polygon.getBounds().getEast() - polygon.getBounds().getWest());
+    if (area < .000003)
+    {
+      // for (let i = 0; i < scaledHull.length; i++)
+      // {
+      //   scaledHull[i] = this.GetScaledPoint(scaledHull[i],center,7.0);
+      // }
+      // console.log("scaled up");
+    }
     return scaledHull;
   }
 
@@ -530,7 +935,7 @@ export class MapComponent implements AfterViewInit {
     let scaledHull = this.GetScaledHull(hull);
 
     newCluster.shape = scaledHull;
-    newCluster.CalculateDiameter();
+    
 
 
     // calculate new cluster polygon
@@ -540,7 +945,6 @@ export class MapComponent implements AfterViewInit {
       this.OnClusterClicked.emit({cluster: newCluster});  
     });
     newCluster.polygon = scaledPolygon;
-
 
 
 
@@ -571,8 +975,7 @@ export class MapComponent implements AfterViewInit {
     newCluster.patients = Array.from(new Set(newCluster.patients));
     // reset milage estimate since there are new points to account for
     newCluster.milageEstimate = -1;
-    
-
+    newCluster.CalculateDiameter();
     
 
     if (oldCluster != null)
@@ -600,20 +1003,86 @@ export class MapComponent implements AfterViewInit {
     }
 
     this.OnZoomChanged();
-    this.largeClusterGroup.refreshClusters();
     console.log(this.Clusters);
     this.CanUndo = true;
     this.GetUnclusteredPatientCount();
   }
 
+
+  public GridCutCluster(cluster : Cluster, rows : number, columns : number)
+  {
+    if (rows <= 0 || columns <= 0)
+    {
+      return;
+    }
+
+    let clusterBounds : L.LatLngBounds = cluster.polygon.getBounds();
+    let boundsWidth = Math.abs(clusterBounds.getEast() - clusterBounds.getWest());
+    let boundsHeight = Math.abs(clusterBounds.getNorth() - clusterBounds.getSouth());
+    let columnWidth = boundsWidth / columns;
+    let rowHeight = boundsHeight / rows;
+    
+    // create array of grid cells
+    let gridCells : L.LatLngBounds[] = [];
+
+    for (let row = 0; row < rows; row++)
+    {
+      for (let column = 0; column < columns; column++)
+      {
+        let topLeftCorner : L.LatLng = L.latLng(clusterBounds.getNorth() - (row * rowHeight),clusterBounds.getWest() + (column * columnWidth));
+        let bottomRightCorner : L.LatLng = L.latLng(clusterBounds.getNorth() - ((row + 1) * rowHeight),clusterBounds.getWest() + ((column + 1) * columnWidth));
+        gridCells.push(L.latLngBounds(topLeftCorner,bottomRightCorner));
+      }
+    }
+
+    let patients = cluster.patients;
+    let patientGroups : Patient[][] = [];
+    for (let i = 0; i < gridCells.length; i++)
+    {
+      patientGroups.push([]);
+    }
+    for (let i = 0; i < patients.length; i++)
+    {
+      let wasAssigned = false;
+      for (let j = 0; j < gridCells.length; j++)
+      {
+        if (gridCells[j].contains(patients[i].location))
+        {
+          wasAssigned = true;
+          patientGroups[j].push(patients[i]);
+        }
+      }
+      if (!wasAssigned)
+      {
+        console.log("LOST POINT");
+      }
+    }
+
+    this.CreateGridClustersFromPatientGroups(patientGroups,cluster);
+    
+
+  }
+
   public OnZoomChanged(cluster? : Cluster)
   {
+
+    this.PatientsAreVisible = false;
+    for (let i = 0; i < this.Clusters.length; i++)
+    {
+      if (this.Clusters[i].shouldDisplayPatients)
+      {
+        this.PatientsAreVisible = true;
+        break;
+      }
+    }
+
     if (cluster)
     {
       for (let patientIndex = 0; patientIndex < cluster.patients.length; patientIndex++)
       {
         if (cluster.shouldDisplayPatients)
         {
+          
           let patientMarker : PatientMarker = cluster.patients[patientIndex].marker;
           patientMarker.setOpacity(1.0);
           if (!this.map.hasLayer(patientMarker))
@@ -848,10 +1317,18 @@ export class MapComponent implements AfterViewInit {
     console.log(`Starting Patient Count: ${this.startingPatientCount}`);
     this.largeClusterGroup.addTo(Cluster.LeafletMarkerClustersGroup);
 
+    this.CreatePatientsMapMask();
+    this.CanUndo = false;
+    this.FindClusters(patients);
+
+  }
+
+  public CreatePatientsMapMask()
+  {
     let dataForMask = [];
-    for (let i = 0; i < patients.length; i++)
+    for (let i = 0; i < this.Patients.length; i++)
     {
-      dataForMask.push(patients[i].location);
+      dataForMask.push(this.Patients[i].location);
     }
     // @ts-ignore
     var patientMask = L.TileLayer.maskCanvas(
@@ -868,155 +1345,6 @@ export class MapComponent implements AfterViewInit {
 
     this.mapControls = L.control.layers(undefined, mapLayers);
     this.mapControls.addTo(this.map);
-    this.FindClusters(patients);
-    // let clusters = this.GreedyCluster(patients,10);
-    // if (clusters != null)
-    // {
-    //   for (let clusterIndex = 0; clusterIndex < clusters.length; clusterIndex++)
-    //   {
-    //     let pointsForPolygon = [];
-    //     let cluster : {id: number,location: number[]}[] = clusters[clusterIndex];
-    //     for (let i = 0; i < cluster.length; i++)
-    //     {
-    //       pointsForPolygon.push(cluster[i].location);
-    //     }
-    //     let hull = this.CalculatePolygonHull(pointsForPolygon);
-    //     let scaledHull = this.GetScaledHull(hull,1.05);
-    //     let clusterPolygon = L.polygon(scaledHull,{color:`#343deb`,weight:2});
-    //     clusterPolygon.addTo(this.map);
-    //   }
-    // }
-
-  }
-
-  public OnPatientClicked(patientMarker : PatientMarker)
-  {
-
-  }
-
-  public DrawClusters(clusters : any[][])
-  {
-    for (let i = 0; i < clusters.length; i++)
-    {
-        let pointsForPolygon = [];
-        let cluster = clusters[i];
-        for (let j = 0; j < cluster.length; j++)
-        {
-          pointsForPolygon.push(cluster[j]);
-        }
-        let hull = this.CalculatePolygonHull(pointsForPolygon);
-        let scaledHull = this.GetScaledHull(hull,1.05);
-        let clusterPolygon = L.polygon(scaledHull,{color:`#343deb`,weight:2});
-        clusterPolygon.addTo(this.map);
-    }
-  }
-
-
-
-  
-
-
-  public GreedyCluster(patients : Patient[], clusterSize : number) : {id: number,location: number[]}[][] | null
-  {
-    if (patients.length <= 1 || clusterSize < 4)
-    {
-      return null;
-    }
-
-
-    function sortFunction(a : [number,Patient], b : [number,Patient]) {
-      if (a[0] === b[0]) {
-          return 0;
-      }
-      else {
-          return (a[0] < b[0]) ? -1 : 1;
-      }
-    }
-   
-    // Function to sort the array of
-    // points by its distance from P
-    function sortArr(arr : {id: number,location: number[]}[], p : {id: number,location: number[]}) : {id: number,location: number[]}[]
-    {
-        // Vector to store the distance
-        // with respective elements
-        
-        var vp = JSON.parse(JSON.stringify(arr));
-        let returnedArray = [];
-        // Storing the distance with its
-        // distance in the vector array
-        for (var i = 0; i < arr.length; i++) {
-      
-            var dist = Math.pow((p.location[0] - arr[i].location[0]), 2)
-                  + Math.pow((p.location[1] - arr[i].location[1]), 2);
-            vp[i] = [dist, arr[i]];
-        }
-        
-        // Sorting the array with
-        // respect to its distance
-        vp.sort(sortFunction);
-      
-        // Output
-        for (var i = 0; i < arr.length; i++) {
-          returnedArray.push(vp[i][1]);
-        }
-        return returnedArray;
-    }
-    let sortedPatients : {id: number,location: number[]}[] = [];
-    for (let i = 0; i < patients.length; i++)
-    {
-      let o = {id:i,location: patients[i].location};
-      sortedPatients.push(o);
-    }
-    console.log(`Starting greedy clustering for clusters of size ${clusterSize}`);
-
-
-    let clusters = [];
-    let isFirstIteration = true;
-    while (sortedPatients.length > 0)
-    {
-      let clusterCentroid = sortedPatients[0];
-      sortedPatients.splice(0,1);
-      let currentCluster = [];
-      currentCluster.push(clusterCentroid);
-      if (sortedPatients.length == 0)
-      {
-        clusters.push(currentCluster);
-        console.log(`Completed cluster ${clusters.length}`);
-        continue;
-      }
-      if (isFirstIteration)
-      {
-        sortedPatients = sortArr(sortedPatients,clusterCentroid);
-        isFirstIteration = false;
-      }
-      else
-      {
-        break;
-      }
-      for (let i = clusterSize - 1; i > 0; i-- )
-      {
-        if (sortedPatients.length <= i)
-        {
-          console.log("working on a small cluster");
-          continue;
-        }
-        currentCluster.push(sortedPatients[i]);
-        sortedPatients.splice(i,1);
-      }
-      clusters.push(currentCluster);
-      console.log(`Completed cluster ${clusters.length}`);
-    }
-
-    console.log(clusters);
-    let l = 0;
-    for (let i = 0; i < clusters.length; i++)
-    {
-      l += clusters[i].length;
-    }
-    console.log(`Total ${l}`);
-    return clusters;
-
-
   }
 
   public GetClusterFromPatientMarker(patientMarker : PatientMarker) : Cluster | null
@@ -1044,7 +1372,6 @@ export class MapComponent implements AfterViewInit {
 
 
     let markerClusters : L.MarkerCluster[] = [];
-    let count = 0;
     this.map.eachLayer((layer : L.Layer) =>
     {
       if (layer instanceof L.MarkerCluster)
@@ -1173,12 +1500,12 @@ export class MapComponent implements AfterViewInit {
       let cluster = this.Clusters[clusterIndex];
       scaledPolygon.on("click",()=>
       {
-        this.OnClusterClicked.emit({cluster});  
+        this.OnClusterClicked.emit({cluster}); 
       });
       this.Clusters[clusterIndex].polygon = scaledPolygon;
       this.Clusters[clusterIndex].CalculateDiameter();
     }
-    this.largeClusterGroup.refreshClusters();
+
 
     for (let i = this.Clusters.length - 1; i >= 0; i--)
     {
@@ -1193,6 +1520,31 @@ export class MapComponent implements AfterViewInit {
     console.log(this.Clusters);
     this.GetUnclusteredPatientCount();
 
+  }
+
+  public UpdateClusterColors()
+  {
+    // calculate the color of each cluster polygon
+    let largestClusterSize = 0;
+    let smallestClusterSize = 10000000;
+    for (let clusterIndex = 0; clusterIndex < this.Clusters.length; clusterIndex++)
+    {
+      if (this.Clusters[clusterIndex].patients.length > largestClusterSize)
+      {
+        largestClusterSize = this.Clusters[clusterIndex].patients.length;
+      }
+      else if (this.Clusters[clusterIndex].patients.length < smallestClusterSize)
+      {
+        smallestClusterSize = this.Clusters[clusterIndex].patients.length;
+      }
+    }
+
+    this.polygonColorGradient.setNumberRange(smallestClusterSize,largestClusterSize);
+    for (let clusterIndex = 0; clusterIndex < this.Clusters.length; clusterIndex++)
+    {
+      let color = '#' + this.polygonColorGradient.colourAt(this.Clusters[clusterIndex].patients.length);
+      this.Clusters[clusterIndex].color = color;
+    }
   }
 
   private CalculatePolygonHull(pointsForPolygon : any[]) : any[]
@@ -1314,14 +1666,8 @@ export class MapComponent implements AfterViewInit {
       let center = [polygon.getCenter().lat,polygon.getCenter().lng];
       polygon.removeFrom(this.map);
       // we need to scale up the shape slightly to fit the points that are on the edges
-      
-      let scaledHull = JSON.parse(JSON.stringify(hull));
-      
-      let scaleFactor = 1.05;
-      for (let i = 0; i < scaledHull.length; i++)
-      {
-        scaledHull[i] = this.GetScaledPoint(scaledHull[i],center,scaleFactor);
-      }
+      let scaledHull = this.GetScaledHull(hull,1.05);
+
       this.Clusters[i].shape = scaledHull;
       
     }
@@ -1437,7 +1783,7 @@ export class MapComponent implements AfterViewInit {
       this.Clusters[clusterIndex].CalculateDiameter();
     }
 
-    this.largeClusterGroup.refreshClusters();
+
     this.OnDeselect.emit({});
     console.log(this.Clusters);
     this.CanUndo = true;
@@ -1470,7 +1816,7 @@ export class MapComponent implements AfterViewInit {
     cluster.shape = scaledHull;
     cluster.CalculateDiameter();
     this.OnZoomChanged();
-    this.largeClusterGroup.refreshClusters();
+
   }
 
   private GetBoundsOfPatients(patients : Patient[]) : L.LatLngBounds
@@ -1484,6 +1830,7 @@ export class MapComponent implements AfterViewInit {
     let polygon = L.polygon(convexHull);
     return polygon.getBounds();
   }
+
 
   private GetScaledPoint(point : any[], center : any[], scaleFactor : number) : any[]
   {
@@ -1516,97 +1863,14 @@ export class MapComponent implements AfterViewInit {
     return internalMarkerClusters;
   }
 
-
-  // // Recursive function to get all of the clusters
-  // public async GetInternalClusters(markerCluster : L.MarkerCluster)
-  // {
-  //   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-  //   let clusterChildCount = markerCluster.getChildCount();
-    
-  //   // check if cluster is small enough to store
-  //   if (clusterChildCount < 905)
-  //   {
-  //     if (clusterChildCount > 800)
-  //     {
-  //       this.largeClusterGroup.fireEvent("clusterclick",{latlng:[markerCluster.getLatLng().lng,markerCluster.getLatLng().lat]})
-  //       //markerCluster.fireEvent("clusterclick");
-  //       this.clustersBounds.push(markerCluster.getBounds());
-  //     }
-  //     // let childMarkers : L.Marker<any>[] = markerCluster.getAllChildMarkers();
-  //     // let points = [];
-  //     // for (let i = 0; i < childMarkers.length; i++)
-  //     // {
-  //     //   points.push([childMarkers[i].getLatLng().lat,childMarkers[i].getLatLng().lng]);
-  //     // }
-
-  //     // this.clusters.push(points);
-  //     this.pointsLogged += markerCluster.getChildCount();
-  //     // this.pointsLogged += points.length;
-  //     // console.log(`removed cluster with child count ${clusterChildCount}`);
-  //     markerCluster.setOpacity(0);
-  //   }
-  //   else
-  //   {
-  //     return;
-
-      
-  //     this.map.fitBounds(markerCluster.getBounds());
-  //     await delay(2000);
-  //     let internalClusters : L.MarkerCluster[] = []
-  //     let visibleClusters : L.MarkerCluster[] = []
-  //     this.map.eachLayer((layer : L.Layer) => {
-  //       // this will get the new clusters formed by zooming in on the cluster
-  //       if( (layer instanceof L.MarkerCluster || layer instanceof L.Marker) && markerCluster.getBounds().contains(layer.getLatLng()) )
-  //       {
-  //         if (layer instanceof L.MarkerCluster)
-  //         {
-  //           internalClusters.push(layer);
-  //         }
-  //         else
-  //         {
-  //           //console.log(`Removed 1`);
-  //           //this.pointsLogged += 1;
-  //           //layer.setOpacity(0);
-  //         }
-          
-  //       }
-  //       if( layer instanceof L.MarkerCluster && this.map.getBounds().contains(layer.getLatLng()) )
-  //       {
-  //         visibleClusters.push(layer);
-  //       }
-  //     })
-
-  //     //console.log(`Visible Clusters: ${visibleClusters.length} Internal Clusters: ${internalClusters.length}`);
-
-  //     for (let i = 0; i < internalClusters.length; i++)
-  //     {
-  //       //let bounds = this.map.getBounds();
-  //       // recursive call
-  //       await this.GetInternalClusters(internalClusters[i]);
-  //       console.log(`Points logged: ${this.pointsLogged}`);
-  //       // this.map.fitBounds(bounds);
-  //       // await delay(2000);
-  //     }
-  //     markerCluster.setOpacity(0);
-  //   }
-  // }
-
   
 
-  public DrawRoute(waypoints : any)
-  {
-    var latlngs = [];
-    for (let i = 0; i < waypoints.length; i++)
-    {
-      latlngs.push([waypoints[i].location[1],waypoints[i].location[0]]);
-    }
-    var polyline = L.polyline(latlngs,{color: 'red'}).addTo(this.markers);
-  }
 
-  public DrawRoundTrip(latLngs : L.LatLng[])
+  public DrawClusterRoundTripRoute(cluster : Cluster, latLngs : L.LatLng[])
   {
 
-    var polyline = L.polyline(latLngs,{color: 'red'}).addTo(this.markers);
+    var polyline = L.polyline(latLngs,{color: 'blue'});
+    cluster.routePolyline = polyline;
   }
 
   public ClearMarkers()
@@ -1637,88 +1901,6 @@ export class MapComponent implements AfterViewInit {
     this.map.panTo(new L.LatLng(averageLatitude, averageLongitude));
   }
 
-  public DisplayPointsInCluster(clusters : any, clusterIndex:number)
-  {
-    // this.miniMarkers.clearLayers();
-    // let clusterGroup = L.markerClusterGroup({removeOutsideVisibleBounds: true});
-    // let cluster = clusters[clusterIndex];
-    // let displayedMiniMarkerCopies : any[] = new Array(cluster.length).fill(0);
-    // let shouldDisplayMiniMarker : any[] = new Array(cluster.length).fill(true);
-    // for (let i = 0; i < cluster.length; i++)
-    // {
-    //   let j = 0;
-    //   for (j = 0; j < i; j++)
-    //   {
-    //     // check if point is the same
-    //     if (cluster[j][0] == cluster[i][0] && cluster[j][1] == cluster[i][1])
-    //     {
-    //       displayedMiniMarkerCopies[j] += 1;
-    //       shouldDisplayMiniMarker[i] = false;
-    //       break;
-    //     }
-    //   }
-
-    // }
-    // let num = 0;
-    // for (let i = 0; i < cluster.length; i++)
-    // {
-    //   if (shouldDisplayMiniMarker[i])
-    //   {
-    //     num++;
-    //     let miniMarkerHtmlStyles = `
-    //     background-color: ${this.colors[clusterIndex % this.colors.length]};
-    //     width: 1.25rem;
-    //     height: 1.25rem;
-    //     display: block;
-    //     left: 0;
-    //     top: 0;
-    //     position: relative;
-    //     border-radius: 1.25rem;
-    //     border: 1px solid #FFFFFF;
-    //     text-align: center;
-    //     color: white;`;
-    //     let miniIcon : L.DivIcon;
-    //     if (displayedMiniMarkerCopies[i] > 0)
-    //     {
-    //       miniIcon = L.divIcon({
-    //         className: "mini-pin-mini",
-    //         iconSize: [12,12],
-    //         html: `<span style="${miniMarkerHtmlStyles}">${displayedMiniMarkerCopies[i] + 1}</span>`
-    //       })
-    //     }
-    //     else
-    //     {
-    //       miniIcon = L.divIcon({
-    //         className: "mini-pin-mini",
-    //         iconSize: [12,12],
-    //         html: `<span style="${miniMarkerHtmlStyles}"></span>`
-    //       });
-    //     }
-    //     var marker = L.marker([cluster[i][0],cluster[i][1]],{icon:miniIcon});
-    //     marker.on("click",(e) =>
-    //     {
-    //       this.InnerClusterPointClicked(i,clusterIndex);
-    //     });
-    //     clusterGroup.addLayer(marker);
-    //     //marker.addTo(this.miniMarkers);
-    //   }
-    // }
-    // clusterGroup.addTo(this.miniMarkers);
-    // console.log(`${num} points displayed`);
-  }
-
-  public GraphPointsByZipCodes(dataFrame : any)
-  {
-    for (let i = 0; i < dataFrame.length; i++)
-    {
-      //let Lat = 
-    }
-  }
-
-  public InnerClusterPointClicked(innerPointIndex : number, clusterIndex : number)
-  {
-    this.OnInnerClusterPointClicked.emit({innerPointIndex,clusterIndex});
-  }
 
 
   private getAveragePoint(points : any) : [number, number]

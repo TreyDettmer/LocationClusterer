@@ -198,167 +198,23 @@ function RunDBScan(points : any, clusters : any) : [points : any,clusters : any]
 function RunKmeans(k : number, patientLocations : any) : any
 {
 
-  let labels = new KMeans({nClusters:k,randomState:0}).fitPredict(patientLocations).arraySync();
-  return labels;
-}
-
-function RunKmeansReturningClusters(k : number, patientLocations : any) : any
-{
-
-  let kmeans = new KMeans({nClusters:k,randomState:0}).fit(patientLocations);
-  let labels = kmeans.predict(patientLocations).arraySync();
-  let clusters : any[] = [];
-  for (let i = 0; i < k; i++)
-  {
-    clusters.push([]);
-  }
-
-  for (let i = 0; i < k; i++)
-  {
-    for (let j = 0; j < labels.length; j++)
-    {
-      if (labels[j] == i)
-      {
-        clusters[i].push(patientLocations[j]);
-      }
-    }
-  }
-
-  return clusters;
-}
-
-function KMeansFromScratch(k : number, data : any[]) {
-  const centroids = data.slice(0, k);
-  const distances = Array.from({ length: data.length }, () =>
-    Array.from({ length: k }, () => 0)
-  );
-  const classes = Array.from({ length: data.length }, () => -1);
-  let itr = true;
-
-  while (itr) {
-    itr = false;
-
-    for (let d in data) {
-      for (let c = 0; c < k; c++) {
-        distances[d][c] = Math.hypot(
-          ...Object.keys(data[0]).map(key => data[d][key] - centroids[c][key])
-        );
-      }
-      const m = distances[d].indexOf(Math.min(...distances[d]));
-      if (classes[d] !== m) itr = true;
-      classes[d] = m;
-    }
-
-    for (let c = 0; c < k; c++) {
-      centroids[c] = Array.from({ length: data[0].length }, () => 0);
-      const size = data.reduce((acc, _, d) => {
-        if (classes[d] === c) {
-          acc++;
-          for (let i in data[0]) centroids[c][i] += data[d][i];
-        }
-        return acc;
-      }, 0);
-      for (let i in data[0]) {
-        centroids[c][i] = parseFloat(Number(centroids[c][i] / size).toFixed(2));
-      }
-    }
-  }
-
-  return classes;
-};
-
-function RunIterativeKmeans(clusterSize : number, patientLocations : any) : any[][] | null
-{
-
   try
   {
-
-
-    let cluster = JSON.parse(JSON.stringify(patientLocations));
-    let clusters : any[] = [];
-    console.log("starting");
-    let queue = [];
-    queue.push(cluster);
-    let kmeans = new KMeans({nClusters:2,randomState:0}).fit(cluster);
-    while (queue.length > 0)
-    {
-
-      cluster = queue[0];
-      //console.log(queue);
-      while (cluster.length > clusterSize)
-      {
-        // kmeans.fitPredict(cluster).arraySync();
-        // kmeans = new KMeans({nClusters:2,randomState:0}).fit(cluster);
-        // let labels = kmeans.predict(cluster).arraySync();
-        let labels = kmeans.fitPredict(cluster).arraySync();
-        //let labels = KMeansFromScratch(2,cluster);
-        //let d = kmeans(cluster,2,"kmeans++");
-        //let labels = d.indexes;
-        let newCluster = [];
-        let otherCluster = [];
-        for (let i = 0; i < labels.length; i++)
-        {
-          if (labels[i] == 0)
-          {
-            newCluster.push(cluster[i]);
-          }
-          else
-          {
-            otherCluster.push(cluster[i]);
-          }
-        }
-        labels = [];
-        if (cluster.length == newCluster.length)
-        {
-          break;
-        }
-        cluster = newCluster;
-        console.log(`Current Cluster length: ${cluster.length} Other cluster length: ${otherCluster.length}`);
-        queue.push(otherCluster);
-      }
-      clusters.push(cluster);
-      queue.splice(0,1);
-      console.log(`${clusters.length} clusters created. queue length: ${queue.length}`);
-    }
-    
-    console.log(clusters);
-    return clusters;
-
+    let labels = new KMeans({nClusters:k,randomState:0}).fitPredict(patientLocations).arraySync();
+    return labels;
   }
-  catch (error)
+  catch (error : any)
   {
-    console.error(error);
+    console.warn(error);
     return null;
   }
+
 }
 
 
 addEventListener('message', ({ data }) => {
 
   setBackend(tf);
-  // //let clusters = RunIterativeKmeans(10,data.patientLocations);
-  // let clusters = RunKmeansReturningClusters(10,data.patientLocations);
-  // console.log(clusters);
-
-
-  // const responseData = {clusters: clusters};
-  // let response : WorkerResponse = {};
-  // if (clusters != null)
-  // {
-  //   response.status = Status.Complete;
-  //   response.data = responseData;
-  // }
-  // else
-  // {
-  //   response.status = Status.Error;
-  //   response.message = `K means failed!`;
-  // }
-
-  // postMessage(response);
-
-
-
-
 
   let labels = RunKmeans(data.k,data.patientLocations);
   const responseData = {labels: labels};

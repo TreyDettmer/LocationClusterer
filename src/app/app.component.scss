@@ -54,6 +54,11 @@ h1
     width: min(260px,70vw);
 }
 
+::ng-deep .primary-tooltip
+{
+    font-size: $fs-caption;
+}
+
 .input-error
 {
     display: block;
@@ -222,13 +227,31 @@ h1
     margin: 10px;
     position: relative;
 
-    button 
-    {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        z-index: 400;
-    }
+
+}
+
+.undo-button
+{
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 400;
+}
+
+.reset-button
+{
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    z-index: 400;
+}
+
+.auto-assign-button
+{
+    position: absolute;
+    bottom: 50px;
+    left: 10px;
+    z-index: 400;
 }
 
 .reassign-cluster-prompt

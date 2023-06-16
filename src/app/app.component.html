@@ -33,7 +33,7 @@
           Generate Clusters
         </button>
         
-        <button mat-flat-button class=" cluster-button gradient-button" (click)="SaveFile()" *ngIf="!this.ShowSpinner && this.mapComponent ? (this.mapComponent.Clusters.length > 0) : false" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
+        <button mat-flat-button class=" cluster-button gradient-button" (click)="SaveFile()" *ngIf="this.HasInitializedMap ? (this.mapComponent.Clusters.length > 0) : false" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
           Download Clustered Data
         </button>
       </div>
@@ -70,7 +70,9 @@
       <app-map #map></app-map>
       <p class="reassign-cluster-prompt" *ngIf="this.IsChoosingNewClusterForPatient">Choose A Cluster</p>
       <p class="unclustered-patients-prompt" *ngIf="this.HasInitializedMap && this.mapComponent.Clusters.length > 0">Unclustered Patients: {{this.mapComponent.UnclusteredPatientCount}}</p>
-      <button *ngIf="this.HasInitializedMap && this.mapComponent.CanUndo" color="accent" mat-raised-button (click)="RestoreClusters($event)">Undo</button>
+      <button class="undo-button" *ngIf="this.HasInitializedMap && this.mapComponent.CanUndo" color="accent" mat-raised-button (click)="RestoreClusters($event)">Undo</button>
+      <button class="reset-button" *ngIf="this.HasInitializedMap && this.mapComponent.PatientsAreVisible" color="accent" mat-raised-button (click)="this.mapComponent.HideAllDisplayedClusteredPatients()">Hide Patients</button>
+      <button matTooltipPosition="right" matTooltip="Assigns patients to nearest clusters" matTooltipClass="primary-tooltip" class="auto-assign-button" *ngIf="this.HasInitializedMap && this.mapComponent.Clusters.length > 0 && this.mapComponent.UnclusteredPatientCount > 0 &&     this.mapComponent.AreMappedPolygonsVisible()" color="accent" mat-raised-button (click)="this.AutoAssignUnclusteredPatients()">Auto Assign Patients</button>
     </div>
   </div>
   <footer>

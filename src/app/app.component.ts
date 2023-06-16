@@ -54,9 +54,6 @@ export class AppComponent implements AfterViewInit{
     maxDiameter: new UntypedFormControl(10,[Validators.min(1),Validators.max(25),Validators.required]),
   });
 
-  actionsForm : UntypedFormGroup = new UntypedFormGroup({
-    kmeansK : new UntypedFormControl(2,[Validators.min(2),Validators.max(20),Validators.required])
-  });
 
   constructor(public loadLoggerService : LoadLoggerService, public dialog : MatDialog, private http: HttpClient)
   {
@@ -65,11 +62,6 @@ export class AppComponent implements AfterViewInit{
 
   ngAfterViewInit(): void 
   { 
-
-    this.mapComponent.OnInnerClusterPointClicked.subscribe(({innerPointIndex,clusterIndex}) =>
-    {
-      this.OnInnerClusterPointClicked(innerPointIndex,clusterIndex);
-    });
 
     this.mapComponent.OnClusterClicked.subscribe(({cluster}) =>
     {
@@ -119,7 +111,7 @@ export class AppComponent implements AfterViewInit{
             try
             {
               let latlngs = polyUtil.decode(data.trips[0].geometry)
-              this.mapComponent.DrawRoundTrip(latlngs);
+              this.mapComponent.DrawClusterRoundTripRoute(this.SelectedCluster!,latlngs);
             }
             catch (error)
             {
@@ -203,6 +195,7 @@ export class AppComponent implements AfterViewInit{
     {
       return;
     }
+    
     console.log("cluster selected");
     //console.log(cluster);
     if (this.IsChoosingNewClusterForPatient)
@@ -470,45 +463,7 @@ export class AppComponent implements AfterViewInit{
     }
   }
 
-  private OnInnerClusterPointClicked(innerPointIndex : number,clusterIndex : number)
-  {
-    let location = this.Clusters[clusterIndex][innerPointIndex];
-    let indexInDataframe = 0;
-    for (let i = 0; i < this.dataFrameLocations.length; i++)
-    {
-      if (this.dataFrameLocations[i][0] == location[0] && this.dataFrameLocations[i][1] == location[1] && this.dataFrameLocations[i][2] == clusterIndex)
-      {
-        indexInDataframe = i;
-        break;
-      }
-    }
-    console.log(location);
-    let url = "https://api.mapbox.com/geocoding/v5/mapbox.places/2%20Lincoln%20Memorial%20Cir%20NW.json?access_token=pk.eyJ1IjoidHJleWRldHRtZXIiLCJhIjoiY2xoOGRpOTdkMDdkdjNtbHg2eThveHI2bCJ9.E_C_Uek056pn85-2jDiICA";
-    let addressEncoding = "2823 Kirsch Dr Antelope CA 95843"
-    // open dialog allowing user to reassign location's cluster
-    const dialogRef = this.dialog.open(ClusterSwitcherDialogComponent,
-      {
-        data: {currentClusterIndex: clusterIndex, newClusterIndex: clusterIndex}
-      });
-    dialogRef.afterClosed().subscribe(result =>
-      {
-        if (result !== undefined)
-        {
-          if (result != clusterIndex)
-          {
-            if (result >= 0 && result < this.Clusters.length)
-            {
-              // update with new cluster value
-              this.dataFrameLocations[indexInDataframe][2] = result;
-              this.Clusters[result].push([location[0],location[1]]);
-              this.Clusters[clusterIndex].splice(innerPointIndex,1);
-              //this.mapComponent.UpdateMapMarkers(this.Clusters);
-              this.mapComponent.DisplayPointsInCluster(this.Clusters,result);
-            }
-          }
-        }
-      })
-  }
+  
 
   
   // called when user uploads a file
@@ -604,6 +559,32 @@ export class AppComponent implements AfterViewInit{
     this.mapComponent.PartitionCluster(this.SelectedCluster);
   }
 
+  public RunGridCluster(event : any, rows : number, columns : number)
+  {
+    event.preventDefault();
+    if (this.SelectedCluster == null)
+    {
+      return;
+    }
+    this.loadLoggerService.LogMessage("Grid Partitioning");
+    this.ShowSpinner = true;
+    // we use setTimeout to allow the page to update before doing processing
+    setTimeout( async () =>
+    {
+      if (this.SelectedCluster != null)
+      {
+        this.mapComponent.GridCutCluster(this.SelectedCluster,rows,columns);
+      }
+      this.OnDeselect();
+      this.loadLoggerService.LogMessage("");
+      this.ShowSpinner = false;
+    }
+    ,100
+    );
+
+
+  }
+
   public RunKmeans(event : any,k:number)
   {
     event.preventDefault();
@@ -612,7 +593,7 @@ export class AppComponent implements AfterViewInit{
       return;
     }
     this.ShowSpinner = true;
-    this.loadLoggerService.LogMessage("");
+    this.loadLoggerService.LogMessage("Auto Partitioning");
     let patientLocations = [];
     for (let i = 0; i< this.SelectedCluster.patients.length; i++)
     {
@@ -663,16 +644,28 @@ export class AppComponent implements AfterViewInit{
     }
   }
 
+  public AutoAssignUnclusteredPatients()
+  {
+    this.loadLoggerService.LogMessage("Auto Assigning");
+    this.ShowSpinner = true;
+    // we use setTimeout to allow the page to update before doing processing
+    setTimeout( async () =>
+    {
+      this.mapComponent.AutoAssignUnclusteredPatients();
+      this.OnDeselect();
+      this.loadLoggerService.LogMessage("");
+      this.ShowSpinner = false;
+    }
+    ,100
+    );
+  }
+
 
 
   // called when user clicks on 'save clustered data'
   public SaveFile()
   {
-    if (this.mapComponent.GetUnclusteredPatientCount() > 0)
-    {
-      alert("Every patient must be assigned to a cluster");
-      return;
-    }
+
     function arrayToCSV (data : any) {
       let csv = data.map((row : any) => Object.values(row));
       csv.unshift(Object.keys(data[0]));
@@ -681,6 +674,7 @@ export class AppComponent implements AfterViewInit{
 
     let clusters : Cluster[] = this.mapComponent.Clusters;
 
+    let additionalClusters = 0;
     // add new cluster column to dataframe
     for (let i = 0; i < this.dataFrame.length; i++)
     {
@@ -701,11 +695,12 @@ export class AppComponent implements AfterViewInit{
       }
       if (foundClusterWithPatient)
       {
-        this.dataFrame[i]["cluster"] = clusterIndex;
+        this.dataFrame[i]["cluster"] = clusterIndex + 1;
       }
       else
       {
-        console.log(`Lost patient ${patUID}`);
+        this.dataFrame[i]["cluster"] = -1;
+        additionalClusters++;
       }
       
     }
@@ -786,7 +781,7 @@ export class AppComponent implements AfterViewInit{
   }
 
 
-  FindValidClusters()
+  async FindValidClusters()
   {
 
     if (this.patients.length == 0)
@@ -794,77 +789,76 @@ export class AppComponent implements AfterViewInit{
       alert("No data to cluster");
       return;
     }
+    if (this.ShowSpinner)
+    {
+      return;
+    }
 
-    // this.ShowSpinner = true;
-    // this.loadLoggerService.LogMessage("");
-    // let k = 2;
-    // let patientLocations = [];
-    
-    // for (let i = 0; i< this.patients.length; i++)
-    // {
-    //   patientLocations.push(this.patients[i].location);
-    // }
-    // if (typeof Worker !== 'undefined') {
-    //   // Create a new web worker to do the calculations
-    //   const worker = new Worker(new URL('./app.worker', import.meta.url));
-    //   worker.onmessage = ({data}) => {
-    //     let workerResponse = data as WorkerResponse;
-    //     if (workerResponse.status == Status.Progess)
-    //     {
-    //       this.loadLoggerService.LogMessage(workerResponse.message || "");
-    //     }
-    //     else if (workerResponse.status == Status.Error)
-    //     {
-    //       this.loadLoggerService.LogMessage(workerResponse.message || "",true);
-    //       this.ShowSpinner = false;
-    //     }
-    //     else
-    //     {
-
-    //       let clusters = workerResponse.data.clusters;
-    //       this.loadLoggerService.LogMessage("");
-    //       this.ShowSpinner = false;
-    //       this.mapComponent.DrawClusters(clusters);
-
-
-
-
-    //       // let labels = workerResponse.data.labels;
-
-    //       // console.log(labels);
-    //       // if (this.SelectedCluster != null)
-    //       // {
-    //       //   this.SelectedCluster.isHighlighted = false;
-    //       //   this.mapComponent.HandleKmeansResults(this.SelectedCluster,k,labels);
-    //       //   this.SelectedCluster = null;
-    //       // }
-    //       // this.mapComponent.UpdateMapMarkers(this.Clusters);
-    //       // this.loadLoggerService.LogMessage("");
-    //       // this.ShowSpinner = false;
-    //     }
-
-
-    //   };
-    //   worker.postMessage({
-    //     k:k,
-    //     patientLocations:patientLocations
-    //   });
-    // } else {
-    //   // Web workers are not supported in this environment.
-    //   // You should add a fallback so that your program still executes correctly.
-    //   console.warn("Workers aren't available");
-    //   this.loadLoggerService.LogMessage("Web Workers are unavailable in your browser",true);
-    //   this.ShowSpinner = false;
-    // }
     this.OnDeselect();
-
+    this.ShowSpinner = true;
     this.mapComponent.ClearMarkers();
-    // we subtract from the provided diameter value because the leaflet marker clusterer doesn't strictly enforce the given diameter
-    let diameter = this.settingsForm.controls["maxDiameter"].value - 1.5;
-    diameter = Math.max(1.0, diameter);
-    this.mapComponent.CreateMarkerClusters(this.patients,diameter / 2.0);
+
+    if (this.dataFrame[0]["cluster"] != null)
+    {
+
+      this.loadLoggerService.LogMessage("Loading Existing Clusters");
+      // we use setTimeout to allow the page to update before doing processing
+      setTimeout( async () =>
+      {
+        let numberOfClusters = [...new Set(this.dataFrame.map(patient => patient["cluster"]))].length;
+        let patientGroups : Patient[][] = [];
+        let unclusteredPatients : Patient[] = [];
+        for (let i = 0; i < numberOfClusters; i++)
+        {
+          patientGroups.push([]);
+        }
+        for (let i = 0; i < this.dataFrame.length;i++)
+        {
+          let clusterIndex : number = this.dataFrame[i]["cluster"] as number;
+          if (clusterIndex == -1)
+          {
+            unclusteredPatients.push(this.patients[i]);
+            continue;
+          }
+          patientGroups[clusterIndex - 1].push(this.patients[i]);
+        }
+        await this.mapComponent.CreateClustersFromPatientGroups(patientGroups,this.patients,unclusteredPatients);
+        this.loadLoggerService.LogMessage("");
+        this.ShowSpinner = false;
+      }
+      ,100
+      );
+
+    }
+    else
+    {
+
+      this.loadLoggerService.LogMessage("Finding Clusters");
+      // we use setTimeout to allow the page to update before doing processing
+      setTimeout( async () =>
+      {
+        // we subtract from the provided diameter value because the leaflet marker clusterer doesn't strictly enforce the given diameter
+        let diameter = this.settingsForm.controls["maxDiameter"].value - 1.5;
+        diameter = Math.max(1.0, diameter);
+        await this.mapComponent.CreateMarkerClusters(this.patients,diameter / 2.0);
+        this.loadLoggerService.LogMessage("");
+        this.ShowSpinner = false;
+      }
+      ,100
+      );
+    }
+
+
+    
+
+
     return;
     
+  }
+
+  private test()
+  {
+
   }
 
   private GetClusterMilage(cluster : Cluster) : Observable<any>
@@ -876,9 +870,6 @@ export class AppComponent implements AfterViewInit{
       //mapbox expects longitude then latitude
       locationsArray.push([cluster.patients[i].longitude,cluster.patients[i].latitude]);
     }
-    //mapbox expects longitude then latitude
-    //locationsArray = [[45.576132, -122.728306],[45.559022,-122.645381],[45.474393,-122.636938]];
-    //locationsArray = [[-122.728306,45.576132],[-122.645381,45.559022],[-122.636938,45.474393]];
     let locationsArrayString1 = [];
     for (let i = 0; i < locationsArray.length; i++)
     {

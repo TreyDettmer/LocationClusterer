@@ -40,6 +40,9 @@ export class Cluster
 
     private _diameter: number = -1;
 
+    private _routePolyline: L.Polyline | undefined;
+
+
 
 
     constructor()
@@ -82,7 +85,14 @@ export class Cluster
       {
 
       }
-      this._patients = [];
+      try
+      {
+        Cluster.MappedPolygons.removeLayer(this._routePolyline as L.Layer);
+      }
+      catch
+      {
+
+      }
     }
 
     public get diameter(): number {
@@ -90,6 +100,24 @@ export class Cluster
     }
     public set diameter(value : number) {
       this._diameter = value;
+    }
+
+    public get routePolyline(): L.Polyline{
+      return this._routePolyline!;
+    }
+    public set routePolyline(value: L.Polyline) {
+
+
+      try
+      {
+        Cluster.MappedPolygons.removeLayer(this._routePolyline as L.Layer);
+      }
+      catch
+      {
+
+      }
+      this._routePolyline = value;
+      this._routePolyline.addTo(Cluster.MappedPolygons);
     }
 
 
@@ -192,7 +220,11 @@ export class Cluster
   
         }
       }
-      
+      if (this._polygon !== undefined)
+      {
+        this._polygon.setTooltipContent(`${this._patients.length}`);
+      }
+
       this._diameter = Math.round(farthestDistance * 100) / 100;
       
     }
@@ -220,12 +252,32 @@ export class Cluster
           }
           this._polygon.addTo(Cluster.MappedPolygons);
         }
+        if (this._routePolyline !== undefined)
+        {
+          try
+          {
+            Cluster.MappedPolygons.removeLayer(this._routePolyline as L.Layer);
+          }
+          catch
+          {
+    
+          }
+          this._routePolyline.addTo(Cluster.MappedPolygons);
+        }
       }
       else
       {
         try
         {
           Cluster.MappedPolygons.removeLayer(this._polygon as L.Layer);
+        }
+        catch
+        {
+  
+        }
+        try
+        {
+          Cluster.MappedPolygons.removeLayer(this._routePolyline as L.Layer);
         }
         catch
         {
@@ -274,6 +326,7 @@ export class Cluster
 
       }
       this._polygon = thePolygon;
+      this._polygon.bindTooltip(`${this._patients.length}`,{permanent:true,direction:"center"});
       this._polygon.addTo(Cluster.MappedPolygons);
     }
 
@@ -295,6 +348,10 @@ export class Cluster
     public set color(theColor : string)
     {
       this._color = theColor;
+      if (this._polygon && !this._isHighlighted)
+      {
+        this._polygon.setStyle({color:this._color});
+      }
     }
 
     public get color() : string
