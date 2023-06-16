@@ -856,11 +856,6 @@ export class AppComponent implements AfterViewInit{
     
   }
 
-  private test()
-  {
-
-  }
-
   private GetClusterMilage(cluster : Cluster) : Observable<any>
   {
 
