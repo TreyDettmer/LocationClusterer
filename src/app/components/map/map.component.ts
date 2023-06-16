@@ -185,7 +185,6 @@ export class MapComponent implements AfterViewInit {
       newCluster.polygon = clusterPolygon;
       this.Clusters.push(newCluster);
     }
-    console.log(this.previousUnclusteredPatients);
     for (let i = 0; i < this.previousUnclusteredPatients.length; i++)
     {
       let patientMarker = this.previousUnclusteredPatients[i].marker;
@@ -200,7 +199,6 @@ export class MapComponent implements AfterViewInit {
 
     // redraw stuff
     this.OnZoomChanged();
-    console.log(this.Clusters);
     this.GetUnclusteredPatientCount();
   }
 
@@ -470,7 +468,6 @@ export class MapComponent implements AfterViewInit {
           if (p.longitude == patient.longitude && p.latitude == patient.latitude)
           {
             overlappingPatients.push(p);
-            //console.log("FOUND MATCH!");
           }
         }
 
@@ -567,7 +564,6 @@ export class MapComponent implements AfterViewInit {
     this.CanUndo = false;
     // redraw stuff
     this.OnZoomChanged();
-    console.log(this.Clusters);
     this.GetUnclusteredPatientCount();
   }
 
@@ -664,7 +660,6 @@ export class MapComponent implements AfterViewInit {
     }
     // redraw stuff
     this.OnZoomChanged();
-    console.log(this.Clusters);
     this.CanUndo = true;
     this.GetUnclusteredPatientCount();
     this.UpdateClusterColors();
@@ -678,7 +673,6 @@ export class MapComponent implements AfterViewInit {
       this.StorePreviousClusters();
     }
     
-    console.log(this.Clusters);
 
     // remove patients from their original cluster
     for (let n = 0; n < patientGroups.length; n++)
@@ -742,7 +736,6 @@ export class MapComponent implements AfterViewInit {
 
     // redraw stuff
     this.OnZoomChanged();
-    console.log(this.Clusters);
     if (shouldStorePreviousClusters)
     {
       this.CanUndo = true;
@@ -758,7 +751,6 @@ export class MapComponent implements AfterViewInit {
       this.StorePreviousClusters();
     }
     
-    console.log(this.Clusters);
     let affectedClusters = [];
     // remove patients from their original cluster
     for (let i = 0; i < patients.length; i++)
@@ -818,7 +810,6 @@ export class MapComponent implements AfterViewInit {
 
     // redraw stuff
     this.OnZoomChanged();
-    console.log(this.Clusters);
     if (shouldStorePreviousClusters)
     {
       this.CanUndo = true;
@@ -871,7 +862,6 @@ export class MapComponent implements AfterViewInit {
 
     // redraw stuff
     this.OnZoomChanged();
-    console.log(this.Clusters);
     this.CanUndo = true;
     this.GetUnclusteredPatientCount();
   }
@@ -1003,7 +993,6 @@ export class MapComponent implements AfterViewInit {
     }
 
     this.OnZoomChanged();
-    console.log(this.Clusters);
     this.CanUndo = true;
     this.GetUnclusteredPatientCount();
   }
@@ -1175,17 +1164,7 @@ export class MapComponent implements AfterViewInit {
     
     let clusterRadius = 1609.34 * clusterMaxRadius / metersPerPixel;
     
-    // maxClusterRadius: (zoomLevel : number) =>
-    // {
-    //     let metersPerPixel = 40075016.686 * Math.abs(Math.cos(this.map.getCenter().lat * Math.PI/180)) / Math.pow(2, zoomLevel+8);
-    //     // (1609 meters in a mile)
-        
-    //     let clusterRadius = 1609.34 * clusterMaxRadius / metersPerPixel;
-    //     return clusterRadius;
-    // },
 
-    //console.log(`Distance Y: ${distanceY} Distance X: ${distanceX}`);
-    console.log(`Cluster Radius: ${clusterRadius} MetersPerPixel: ${metersPerPixel}`);
     this.largeClusterGroup = L.markerClusterGroup({
       removeOutsideVisibleBounds: true,
       zoomToBoundsOnClick: false,
@@ -1261,7 +1240,6 @@ export class MapComponent implements AfterViewInit {
           if (p.longitude == patient.longitude && p.latitude == patient.latitude)
           {
             overlappingPatients.push(p);
-            //console.log("FOUND MATCH!");
           }
         }
 
@@ -1447,7 +1425,6 @@ export class MapComponent implements AfterViewInit {
     }
 
     Cluster.LeafletMarkerClustersGroup.clearLayers();
-    console.log("starting to assign points to clusters");
 
     for (let patientIndex = 0; patientIndex < patients.length; patientIndex++)
     {
@@ -1465,7 +1442,6 @@ export class MapComponent implements AfterViewInit {
 
       if (!foundClusterForPoint)
       {
-        console.log(`Lost point ${patients[patientIndex].patUID}`);
         let patientMarker = patients[patientIndex].marker;
         if (!this.map.hasLayer(patientMarker))
         {
@@ -1494,7 +1470,6 @@ export class MapComponent implements AfterViewInit {
     for (let clusterIndex = 0; clusterIndex < this.Clusters.length; clusterIndex++)
     {
       let color = '#' + this.polygonColorGradient.colourAt(this.Clusters[clusterIndex].patients.length);
-      //console.log(color);
       this.Clusters[clusterIndex].color = color;
       let scaledPolygon = L.polygon(this.Clusters[clusterIndex].shape,{color:`${this.Clusters[clusterIndex].color}`,weight:2});
       let cluster = this.Clusters[clusterIndex];
@@ -1517,7 +1492,6 @@ export class MapComponent implements AfterViewInit {
       }
       this.ReconfigureClusterShape(this.Clusters[i]);
     }
-    console.log(this.Clusters);
     this.GetUnclusteredPatientCount();
 
   }
@@ -1671,10 +1645,8 @@ export class MapComponent implements AfterViewInit {
       this.Clusters[i].shape = scaledHull;
       
     }
-    console.log(`${internalClusterCount} new clusters created`);
 
     let unassignedPatients : Patient[] = [];
-    console.log(`About to map ${cluster.patients.length} points`);
     // partition points from the broader cluster into the smaller internal clusters
     // reverse for loop so we can remove points as we iterate
     for (let i = cluster.patients.length - 1; i >= 0; i--)
@@ -1716,16 +1688,6 @@ export class MapComponent implements AfterViewInit {
 
       }
     }
-    if (unassignedPatients.length > 0)
-    {
-      for (let i = 0; i < unassignedPatients.length; i++)
-      {
-
-        console.log(`unassigned patient ${unassignedPatients[i].patUID}`);
-
-      }
-
-    }
 
     if (cluster.patients.length == 0)
     {
@@ -1750,7 +1712,6 @@ export class MapComponent implements AfterViewInit {
       }
       patientCount += this.Clusters[i].patients.length;
     }
-    console.log(`Patient count is ${patientCount}`);
 
 
     // calculate the color of each cluster polygon
@@ -1785,7 +1746,6 @@ export class MapComponent implements AfterViewInit {
 
 
     this.OnDeselect.emit({});
-    console.log(this.Clusters);
     this.CanUndo = true;
     
   }

@@ -118,7 +118,6 @@ export class AppComponent implements AfterViewInit{
               console.log(error);
             }
             
-            console.log(data.trips[0].distance / 1609.34);
             let distance = Math.round((data.trips[0].distance / 1609.34) * 10) / 10;
             this.SelectedCluster!.milageEstimate = distance;
           }
@@ -144,7 +143,6 @@ export class AppComponent implements AfterViewInit{
     {
       return;
     }
-    console.log("DESELECT");
 
     if (this.SelectedCluster != null)
     {
@@ -196,8 +194,6 @@ export class AppComponent implements AfterViewInit{
       return;
     }
     
-    console.log("cluster selected");
-    //console.log(cluster);
     if (this.IsChoosingNewClusterForPatient)
     {
       this.OnPatientReassignConfirmation(cluster);
@@ -237,12 +233,10 @@ export class AppComponent implements AfterViewInit{
     {
       if (this.SelectedCluster == null)
       {
-        console.log(`Patient__${this.SelectedPatient.patUID} in cluster_-1 reassigned to cluster_${newCluster.patients.length}`);
         this.mapComponent.SwitchPatientsAssignedCluster([this.SelectedPatient],null,newCluster);
       }
       else
       {
-        console.log(`Patient_${this.SelectedPatient.patUID} in cluster_${this.SelectedCluster.patients.length} reassigned to cluster_${newCluster.patients.length}`);
         this.mapComponent.SwitchPatientsAssignedCluster([this.SelectedPatient],this.SelectedCluster,newCluster);
       }
     }
@@ -251,12 +245,10 @@ export class AppComponent implements AfterViewInit{
       
       if (this.SelectedCluster == null)
       {
-        console.log(`${this.SelectedPatients.length} Patients in cluster_-1 reassigned to cluster_${newCluster.patients.length}`);
         this.mapComponent.SwitchPatientsAssignedCluster(this.SelectedPatients,null,newCluster);
       }
       else
       {
-        console.log(`${this.SelectedPatients.length} Patients in cluster_${this.SelectedCluster.patients.length} reassigned to cluster_${newCluster.patients.length}`);
         this.mapComponent.SwitchPatientsAssignedCluster(this.SelectedPatients,this.SelectedCluster,newCluster);
       }
 
@@ -302,7 +294,6 @@ export class AppComponent implements AfterViewInit{
 
     if (cluster != null)
     {
-      console.log(cluster);
       if (this.SelectedCluster != null)
       {
         if (this.SelectedCluster != cluster)
@@ -321,7 +312,6 @@ export class AppComponent implements AfterViewInit{
     }
     else
     {
-      console.log("cluster is null");
       if (this.SelectedCluster != null)
       {
         this.SelectedCluster.isHighlighted = false;
@@ -530,7 +520,6 @@ export class AppComponent implements AfterViewInit{
       if (data.lengthComputable)
       {
         let progress = ((data.loaded / data.total) * 100);
-        console.log(`File Upload Progress: ${progress}`);
       }
     }
     fileReader.readAsText(this.UploadedFile); 
@@ -617,7 +606,6 @@ export class AppComponent implements AfterViewInit{
         {
           let labels = workerResponse.data.labels;
 
-          console.log(labels);
           if (this.SelectedCluster != null)
           {
             this.SelectedCluster.isHighlighted = false;
@@ -866,7 +854,6 @@ export class AppComponent implements AfterViewInit{
       locationsArrayString1.push(locationsArray[i].join(','));
     }
     let locationsArrayString = locationsArrayString1.join(';');
-    console.log(locationsArrayString);
     let accessToken = "pk.eyJ1IjoidHJleWRldHRtZXIiLCJhIjoiY2xoOGRsd3JzMDQ1ejNkbzZiZmNvNGNxaCJ9.fGOdn3Ju30RKt11nZ_fBww";
     let baseURL = "https://valhalla1.openstreetmap.de/optimized_route/";
     let url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${locationsArrayString}?steps=true&access_token=${accessToken}`;
