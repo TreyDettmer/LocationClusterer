@@ -6,7 +6,6 @@ import { Status, WorkerResponse } from './interfaces/worker-response';
 import * as turf from '@turf/turf';
 import { Patient } from './interfaces/patient';
 import kmeans from "kmeans-ts";
-//const skmeans = require("skmeans");
 
 /**
  * Gets distance in miles between two points on earth.
@@ -197,11 +196,10 @@ function RunDBScan(points : any, clusters : any) : [points : any,clusters : any]
 
 function RunKmeans(k : number, patientLocations : any) : any
 {
-
   try
   {
-    let labels = new KMeans({nClusters:k,randomState:0}).fitPredict(patientLocations).arraySync();
-    return labels;
+    var res = kmeans(patientLocations,k,"kmeans");
+    return res.indexes;
   }
   catch (error : any)
   {
@@ -213,8 +211,6 @@ function RunKmeans(k : number, patientLocations : any) : any
 
 
 addEventListener('message', ({ data }) => {
-
-  setBackend(tf);
 
   let labels = RunKmeans(data.k,data.patientLocations);
   const responseData = {labels: labels};
