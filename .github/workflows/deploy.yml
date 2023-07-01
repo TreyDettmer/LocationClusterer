@@ -18,7 +18,9 @@ jobs:
         run: |
           npm ci
           npm run build
-      
+        env:
+          MAPBOX_API_ACCESS_TOKEN: ${{ secrets.MAPBOX_API_ACCESS_TOKEN }}
+          SITE_ACCESS_SHA256: ${{ secrets.SITE_ACCESS_SHA256 }}
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:

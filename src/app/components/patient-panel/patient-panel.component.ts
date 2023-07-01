@@ -3,6 +3,7 @@ import { AppComponent } from 'src/app/app.component';
 import { Cluster } from 'src/app/interfaces/cluster';
 import { Patient } from 'src/app/interfaces/patient';
 import * as L from 'leaflet';
+import { MainComponent } from '../main/main.component';
 
 @Component({
   selector: 'app-patient-panel',
@@ -12,7 +13,7 @@ import * as L from 'leaflet';
 export class PatientPanelComponent {
 
   @Input() patient! : Patient;
-  @Input() appComponent! : AppComponent;
+  @Input() mainComponent! : MainComponent;
   @Input() cluster! : Cluster | null;
   public OnMouseEnter(event : any)
   {
@@ -41,6 +42,6 @@ export class PatientPanelComponent {
 
   public ReassignClusterRequest(event : any)
   {
-    this.appComponent.OnPatientReassignRequest(event,this.patient);
+    this.mainComponent.OnPatientReassignRequest(event,this.patient);
   }
 }

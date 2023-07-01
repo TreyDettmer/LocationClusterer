@@ -1118,6 +1118,33 @@ export class MapComponent implements AfterViewInit {
     
   }
 
+  // Populates patients array and enables map layer controls
+  public async LoadPatients(patients : Patient[])
+  {
+    if (this.Patients.length != 0)
+    {
+      for (let i = 0; i < this.Patients.length; i++)
+      {
+        let patientMarker = this.Patients[i].marker;
+        try
+        {
+          patientMarker.removeFrom(this.map);
+        }
+        catch
+        {
+
+        }
+      }
+    }
+    this.Patients = patients;
+    this.Clusters = [];
+    this.ClearMarkers();
+    this.CreatePatientsMapMask();
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    this.map.fitBounds(this.GetBoundsOfPatients(patients).pad(0.05));
+    await delay(1000);
+  }
+
   public async CreateMarkerClusters(patients : Patient[], clusterMaxRadius : number)
   {
     if (this.Patients.length != 0)
@@ -1295,7 +1322,7 @@ export class MapComponent implements AfterViewInit {
     console.log(`Starting Patient Count: ${this.startingPatientCount}`);
     this.largeClusterGroup.addTo(Cluster.LeafletMarkerClustersGroup);
 
-    this.CreatePatientsMapMask();
+    //this.CreatePatientsMapMask();
     this.CanUndo = false;
     this.FindClusters(patients);
 
@@ -1303,6 +1330,15 @@ export class MapComponent implements AfterViewInit {
 
   public CreatePatientsMapMask()
   {
+    if (this.mapControls !== undefined)
+    {
+      try
+      {
+        this.map.removeControl(this.mapControls);
+        this.mapControls = undefined;
+      }
+      catch{}
+    }
     let dataForMask = [];
     for (let i = 0; i < this.Patients.length; i++)
     {
@@ -1322,6 +1358,7 @@ export class MapComponent implements AfterViewInit {
     }
 
     this.mapControls = L.control.layers(undefined, mapLayers);
+    //this.mapControls.
     this.mapControls.addTo(this.map);
   }
 
@@ -1840,10 +1877,6 @@ export class MapComponent implements AfterViewInit {
     Cluster.LeafletMarkerClustersGroup.clearLayers();
     Cluster.MappedPolygons.clearLayers();
     Cluster.MappedPatients.clearLayers();
-    if (this.mapControls !== undefined)
-    {
-      this.map.removeControl(this.mapControls);
-    }
     
   }
 

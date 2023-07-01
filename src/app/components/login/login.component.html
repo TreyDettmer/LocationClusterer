@@ -1,0 +1,21 @@
+<div class="page-container">
+    <div class="header">
+      <h1>Location Clusterer</h1>
+    </div>
+    <div class="login-container">
+      <mat-form-field appearance="outline">
+        <mat-label>Enter password</mat-label>
+        <input matInput [type]="revealPassword ?  'text' : 'password'" placeholder="" value="" [(ngModel)] = "password" (input)="OnPasswordInputChanged()">
+        <!-- <mat-icon fontSet="fas" fontIcon="fa-birthday-cake" matSuffix></mat-icon> -->
+        <button class="password-reveal-button" mat-icon-button matSuffix color="black" aria-label="Reveal Password" (click)="TogglePasswordVisibility()">
+          <fa-icon [icon]="revealPassword ? faEye : faEyeSlash"></fa-icon>
+        </button>
+      </mat-form-field>
+      <button [disabled]="this.password.length == 0" color="accent" mat-raised-button (click)="OnSubmit()">Login</button>
+      <p class="error-message" *ngIf="this.password.length == 0 && this.hasAttempted == true">Incorrect Password</p>
+    </div>
+    <footer>
+      <p>&#169; 2023 Trey Dettmer</p>
+    </footer>
+  
+  </div>

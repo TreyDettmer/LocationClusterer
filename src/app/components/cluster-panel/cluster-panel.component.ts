@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { AppComponent } from 'src/app/app.component';
 import { Cluster } from 'src/app/interfaces/cluster';
+import { MainComponent } from '../main/main.component';
 
 @Component({
   selector: 'app-cluster-panel',
@@ -9,7 +10,7 @@ import { Cluster } from 'src/app/interfaces/cluster';
 })
 export class ClusterPanelComponent {
   @Input() cluster! : Cluster;
-  @Input() appComponent! : AppComponent;
+  @Input() mainComponent! : MainComponent;
   public k : number = 2;
   public rows : number = 2;
   public columns : number = 2;
@@ -20,27 +21,27 @@ export class ClusterPanelComponent {
     {
       return;
     }
-    this.appComponent.RunKmeans(event, this.k);
+    this.mainComponent.RunKmeans(event, this.k);
   }
 
   public AutoPartition(event : any)
   {
-    this.appComponent.AutoPartitionCluster(event);
+    this.mainComponent.AutoPartitionCluster(event);
   }
 
   public GetClusterMilage(event : any)
   {
-    this.appComponent.GetClusterEstimatedMilage(event);
+    this.mainComponent.GetClusterEstimatedMilage(event);
   }
 
   public DeleteCluster(event : any)
   {
-    this.appComponent.DeleteCluster(event);
+    this.mainComponent.DeleteCluster(event);
   }
 
   public RunGridCluster(event : any)
   {
-    this.appComponent.RunGridCluster(event,this.rows,this.columns);
+    this.mainComponent.RunGridCluster(event,this.rows,this.columns);
   }
 
   public AreGridSettingsValid()

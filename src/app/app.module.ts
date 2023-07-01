@@ -18,6 +18,22 @@ import { LeafletMarkerClusterModule } from '@asymmetrik/ngx-leaflet-markercluste
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { PatientPanelComponent } from './components/patient-panel/patient-panel.component';
 import { ClusterPanelComponent } from './components/cluster-panel/cluster-panel.component';
+import { RouterModule, Routes } from '@angular/router';
+import { MainComponent } from './components/main/main.component';
+import { LoginComponent } from './components/login/login.component'
+import { isUserLoggedInGuard } from './interfaces/auth.guard';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { AlertDialogComponent } from './components/alert-dialog/alert-dialog.component';
+
+const routes: Routes = [  
+  { path: 'main', component: MainComponent,
+    canActivate:[isUserLoggedInGuard] 
+  },
+
+  { path: 'login', component: LoginComponent},
+  { path: '', redirectTo: '/main', pathMatch: 'full' },
+  { path: '**', component:LoginComponent}
+];
 
 @NgModule({
   declarations: [
@@ -26,7 +42,10 @@ import { ClusterPanelComponent } from './components/cluster-panel/cluster-panel.
     MapComponent,
     ClusterSwitcherDialogComponent,
     PatientPanelComponent,
-    ClusterPanelComponent
+    ClusterPanelComponent,
+    MainComponent,
+    LoginComponent,
+    AlertDialogComponent
   ],
   imports: [
     BrowserModule,
@@ -41,7 +60,9 @@ import { ClusterPanelComponent } from './components/cluster-panel/cluster-panel.
     MatDialogModule,
     HttpClientModule,
     LeafletMarkerClusterModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    FontAwesomeModule,
+    RouterModule.forRoot(routes)
   ],
   providers: [],
   bootstrap: [AppComponent]
