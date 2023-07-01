@@ -9,10 +9,6 @@
         <h2>Tip: Check your console</h2>
     </body>
     <script>
-        // Required by some npm packages
-        window.process = { browser: true, env: { ENVIRONMENT: 'BROWSER' } };
-    </script>
-    <script>
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", () => {
                 navigator.serviceWorker

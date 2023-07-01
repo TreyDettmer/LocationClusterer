@@ -3,7 +3,9 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  MAPBOX_API_ACCESS_TOKEN: process.env['MAPBOX_API_ACCESS_TOKEN'],
+  SITE_ACCESS_SHA256: process.env['SITE_ACCESS_SHA256']
 };
 
 /*

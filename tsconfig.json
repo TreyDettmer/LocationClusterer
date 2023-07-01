@@ -23,8 +23,7 @@
       "dom"
     ],
     "skipLibCheck": true,
-    "useDefineForClassFields": false,
-    "typeRoots": ["./global.d.ts","./node_modules/@types"],
+    "useDefineForClassFields": false
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

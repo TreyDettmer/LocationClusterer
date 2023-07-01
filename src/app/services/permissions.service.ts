@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
+import { environment } from 'src/environments/environment';
 const sha256 = require('sha256');
-const secret : string = process.env.SITE_ACCESS_SHA256 || "";// "738ef1c0f31e0da20e0e635108cce5dc7c71062628b143d7ee1f0083e04e05b2";
+const secret : string = environment.SITE_ACCESS_SHA256 || "";// "738ef1c0f31e0da20e0e635108cce5dc7c71062628b143d7ee1f0083e04e05b2";
+
 @Injectable({
   providedIn: 'root'
 })
