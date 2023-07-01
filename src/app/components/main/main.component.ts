@@ -846,7 +846,8 @@ export class MainComponent implements AfterViewInit{
       locationsArrayString1.push(locationsArray[i].join(','));
     }
     let locationsArrayString = locationsArrayString1.join(';');
-    let accessToken = "pk.eyJ1IjoidHJleWRldHRtZXIiLCJhIjoiY2xoOGRsd3JzMDQ1ejNkbzZiZmNvNGNxaCJ9.fGOdn3Ju30RKt11nZ_fBww"; //process.env.MAPBOX_API_ACCESS_TOKEN 
+
+    let accessToken : any = process.env.MAPBOX_API_ACCESS_TOKEN; //"pk.eyJ1IjoidHJleWRldHRtZXIiLCJhIjoiY2xoOGRsd3JzMDQ1ejNkbzZiZmNvNGNxaCJ9.fGOdn3Ju30RKt11nZ_fBww"; //
     let baseURL = "https://valhalla1.openstreetmap.de/optimized_route/";
     let url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${locationsArrayString}?steps=true&access_token=${accessToken}`;
     return this.http.get<any>(url).pipe(
