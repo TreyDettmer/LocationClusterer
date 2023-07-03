@@ -12,6 +12,7 @@
     margin: 0;
     padding: 0;
     position: relative;
+    background-color:#f0f0f0 ;
 
 }
 
@@ -90,11 +91,6 @@ h1
     display: none;
 }
 
-.upload-button
-{
-    color: white;
-}
-
 .cluster-settings-form
 {
     display: flex;
@@ -131,31 +127,31 @@ h1
 {
     position: relative;
     font-family: $ff-primary;
-    color: white;
     margin: 0 5px;
-    
+    border-width: 3px;
+    border-color: #4d4d4f;
 }
 
-.gradient-button
-{
-    background-image: linear-gradient(to right,var(--theme-gradient-color1),var(--theme-gradient-color2),var(--theme-gradient-color2),var(--theme-gradient-color1));
-    background-size: 320%;
-    background-position: left;
-    transition: .1s background-position linear;
-}
+// .gradient-button
+// {
+//     background-image: linear-gradient(to right,var(--theme-gradient-color1),var(--theme-gradient-color2),var(--theme-gradient-color2),var(--theme-gradient-color1));
+//     background-size: 320%;
+//     background-position: left;
+//     transition: .1s background-position linear;
+// }
 
 
-.gradient-button:hover
-{
-    background-position: right;
-}
+// .gradient-button:hover
+// {
+//     background-position: right;
+// }
 
 
 
 .log-container
 {
     height: 3vh;
-    width: 90vw;
+    width: 100vw;
     color: black;
     display: flex;
     flex-direction: row;
@@ -163,6 +159,7 @@ h1
     align-items: center;
     align-self: center;
     gap: 10px;
+    background-color:white ;
 }
 
 .content
@@ -170,14 +167,15 @@ h1
     display: flex;
     flex-direction: row;
     justify-content: center;
+    background-color:white ;
 }
 
 .side-panel
 {
     width: 300px;
     height: 60vh;
-    background-color: #e2e3e4;
-    margin: 10px;
+    background-color: #f0f0f0;
+    margin: 5px 10px 10px 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -190,7 +188,7 @@ h1
     padding: 5px;
     display: flex;
     flex-direction: column;
-    background-color: #cccccc;
+    background-color: #dcdcdc;
     width: 100%;
     justify-content: center;
     margin-top: auto;
@@ -224,7 +222,7 @@ h1
     width: min(900px, 60vw);
     align-self: center;
     padding: 0;
-    margin: 10px;
+    margin: 5px 10px 10px 10px;
     position: relative;
 
 
@@ -314,12 +312,12 @@ h1
 
 footer
 {
-    background: #e2e3e4;
     color: $clr-dark;
     text-align: center;
     font-family: $ff-primary;
     padding: 1em 0;
-    margin-top: auto;
+    text-transform: uppercase;
+    margin: auto 0 auto 0;
 }
 
 ::ng-deep .patient-icon

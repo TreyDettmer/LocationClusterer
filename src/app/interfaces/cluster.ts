@@ -42,6 +42,9 @@ export class Cluster
 
     private _routePolyline: L.Polyline | undefined;
 
+    private _routePolylineShape: any[] = [];
+
+
 
 
 
@@ -120,6 +123,12 @@ export class Cluster
       this._routePolyline.addTo(Cluster.MappedPolygons);
     }
 
+    public get routePolylineShape(): any[] {
+      return this._routePolylineShape;
+    }
+    public set routePolylineShape(value: any[]) {
+      this._routePolylineShape = value;
+    }
 
     public get milageEstimate(): number {
       return this._milageEstimate;
@@ -347,6 +356,15 @@ export class Cluster
       try
       {
         Cluster.MappedPolygons.removeLayer(this._polygon as L.Layer);
+        
+      }
+      catch
+      {
+
+      }
+      try
+      {
+        Cluster.MappedPolygons.removeLayer(this._routePolyline as L.Layer);
       }
       catch
       {

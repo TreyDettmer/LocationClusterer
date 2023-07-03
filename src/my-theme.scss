@@ -3,6 +3,55 @@
 @include mat.core();
 
 
+$green-pallete: (
+    50:#f1f8ea,
+    100:#ddedcb,
+    200:#c6e2aa,
+    300:#b0d688,
+    400:#9fcd6e,
+    500:#8ec454,
+    600:#7fb44c,
+    700:#6ca041,
+    800:#598c38,
+    900:#386a26,
+    contrast: (
+        50:rgba(black, 0.87),
+        100:rgba(black, 0.87),
+        200:rgba(black, 0.87),
+        300:rgba(black, 0.87),
+        400:white,
+        500:white,
+        600:white,
+        700:white,
+        800:white,
+        900:white,
+    )
+);
+
+$gray-pallete: (
+    50:#fcfcfe,
+    100:#f7f7f9,
+    200:#f2f2f4,
+    300:#ebebed,
+    400:#c9c9cb,
+    500:#ababae,
+    600:#818184,
+    700:#6d6d6f,
+    800:#4d4d4f,
+    900:#2b2b2d,
+    contrast: (
+        50:rgba(black, 0.87),
+        100:rgba(black, 0.87),
+        200:rgba(black, 0.87),
+        300:rgba(black, 0.87),
+        400:rgba(black, 0.87),
+        500:rgba(black, 0.87),
+        600:white,
+        700:white,
+        800:white,
+        900:white,
+    )
+);
 
 $equality-primary-pallete: (
     50:#fff7e0,
@@ -53,11 +102,13 @@ $equality-accent-pallete: (
         900:white,
     )
 );
-$my-primary: mat.define-palette($equality-primary-pallete, 600);
-$my-accent: mat.define-palette($equality-accent-pallete, 400);
+//$my-primary: mat.define-palette($equality-primary-pallete, 600);
+$my-primary: mat.define-palette($green-pallete, 300);
+//$my-accent: mat.define-palette($equality-accent-pallete, 400);
+$my-accent: mat.define-palette($gray-pallete, 800);
 $my-warn: mat.define-palette(mat.$red-palette);
 // The "warn" palette is optional and defaults to red if not specified.
-$my-warn: mat.define-palette(mat.$red-palette);
+$my-warn: mat.define-palette(mat.$red-palette,900);
 
 $my-theme: mat.define-light-theme((
  color: (
@@ -85,8 +136,12 @@ $my-theme: mat.define-light-theme((
 // @include mat.all-component-themes($my-theme);
 $theme-gradient-color1: mat.get-color-from-palette($equality-primary-pallete,800);
 $theme-gradient-color2: mat.get-color-from-palette($equality-accent-pallete,500);
+$theme-primary-color: mat.get-color-from-palette($green-pallete,300);
+$theme-accent-color: mat.get-color-from-palette($gray-pallete,800);
 :root
 {
     --theme-gradient-color1: #{$theme-gradient-color1};
     --theme-gradient-color2: #{$theme-gradient-color2};
+    --theme-primary-color: #{$theme-primary-color};
+    --theme-accent-color: #{$theme-accent-color};
 }

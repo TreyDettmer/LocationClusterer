@@ -2,7 +2,7 @@
     <p class="name">Patient {{this.patient.patUID}}</p>  
     <p class="cluster">{{this.cluster == null ? "unclustered" : "Within Cluster " + this.cluster.patients.length}}</p>
     <p class="address">{{this.patient.memberAddress}}, {{this.patient.city}}, {{this.patient.state}}, {{this.patient.zip}}</p>
-    <button mat-flat-button color="accent" [disabled]="this.mainComponent.IsChoosingNewClusterForPatient && this.mainComponent.SelectedPatient != this.patient" (click)="ReassignClusterRequest($event)">     
+    <button mat-flat-button color="primary" [disabled]="this.mainComponent.IsChoosingNewClusterForPatient && this.mainComponent.SelectedPatient != this.patient" (click)="ReassignClusterRequest($event)">     
         {{this.mainComponent.IsChoosingNewClusterForPatient && this.mainComponent.SelectedPatient == this.patient ? "Cancel" : "Change Cluster"}}
     </button>
 </div>

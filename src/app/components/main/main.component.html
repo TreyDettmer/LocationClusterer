@@ -12,7 +12,7 @@
   
             {{UploadedFileName || "No file uploaded yet."}}
   
-            <button mat-icon-button class="upload-button gradient-button " matTooltipPosition="right" matTooltip="Upload a CSV file containing longitude and latitude columns" matTooltipClass="primary-tooltip"
+            <button mat-mini-fab color="primary" class="upload-button" matTooltipPosition="right" matTooltip="Upload a CSV file containing longitude and latitude columns" matTooltipClass="primary-tooltip"
               (click)="fileUpload.click()">
               <mat-icon>attach_file</mat-icon>
             </button>
@@ -29,11 +29,11 @@
           </mat-form-field>
         </div>
         <div class="buttons-container">
-          <button mat-flat-button class="cluster-button gradient-button" (click)="GenerateClusters()" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
+          <button mat-flat-button color="primary" class="cluster-button" (click)="GenerateClusters()" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
             Generate Clusters
           </button>
           
-          <button mat-flat-button class=" cluster-button gradient-button" (click)="SaveFile()" *ngIf="this.HasInitializedMap ? (this.mapComponent.Clusters.length > 0) : false" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
+          <button mat-flat-button color="primary" class="cluster-button" (click)="SaveFile()" *ngIf="this.HasInitializedMap ? (this.mapComponent.Clusters.length > 0) : false" [disabled]="settingsForm.invalid || this.ShowSpinner || this.UploadedFile == null">
             Download Clustered Data
           </button>
         </div>
@@ -59,10 +59,10 @@
           </ng-container>
         </div>
         <div class="side-panel-footer" *ngIf="this.SelectedPatients.length != 0">
-          <button color="accent" *ngIf="this.SelectedPatients.length != 0" [disabled]="this.SelectedPatients.length <= 1 || (this.IsChoosingNewClusterForPatient && this.SelectedPatient != null)" mat-flat-button (click)="OnPatientReassignRequest($event,null)">
+          <button color="primary" *ngIf="this.SelectedPatients.length != 0" [disabled]="this.SelectedPatients.length <= 1 || (this.IsChoosingNewClusterForPatient && this.SelectedPatient != null)" mat-flat-button (click)="OnPatientReassignRequest($event,null)">
             {{this.IsChoosingNewClusterForPatient && this.SelectedPatient == null ? "Cancel" : "Reassign Points to Cluster"}}
           </button>
-          <button color="accent" *ngIf="this.SelectedPatients.length != 0" [disabled]="this.IsChoosingNewClusterForPatient || this.SelectedPatients.length <= 1" mat-flat-button (click)="CreateClusterFromSelectedPatients($event)">Create Cluster from Points</button>
+          <button color="primary" *ngIf="this.SelectedPatients.length != 0" [disabled]="this.IsChoosingNewClusterForPatient || this.SelectedPatients.length <= 1" mat-flat-button (click)="CreateClusterFromSelectedPatients($event)">Create Cluster from Points</button>
         </div>
       </div>
       
@@ -70,9 +70,9 @@
         <app-map #map></app-map>
         <p class="reassign-cluster-prompt" *ngIf="this.IsChoosingNewClusterForPatient">Choose A Cluster</p>
         <p class="unclustered-patients-prompt" *ngIf="this.HasInitializedMap && this.mapComponent.Clusters.length > 0">Unclustered Patients: {{this.mapComponent.UnclusteredPatientCount}}</p>
-        <button class="undo-button" *ngIf="this.HasInitializedMap && this.mapComponent.CanUndo" color="accent" mat-raised-button (click)="RestoreClusters($event)">Undo</button>
-        <button class="reset-button" *ngIf="this.HasInitializedMap && this.mapComponent.PatientsAreVisible" color="accent" mat-raised-button (click)="this.mapComponent.HideAllDisplayedClusteredPatients()">Hide Patients</button>
-        <button matTooltipPosition="right" matTooltip="Assigns unclustered patients to nearest clusters" matTooltipClass="primary-tooltip" class="auto-assign-button" *ngIf="this.HasInitializedMap && this.mapComponent.Clusters.length > 0 && this.mapComponent.UnclusteredPatientCount > 0 &&     this.mapComponent.AreMappedPolygonsVisible()" color="accent" mat-raised-button (click)="this.AutoAssignUnclusteredPatients()">Auto Assign Unclustered Patients</button>
+        <button class="undo-button" *ngIf="this.HasInitializedMap && this.mapComponent.CanUndo" color="primary" mat-raised-button (click)="RestoreClusters($event)">Undo</button>
+        <button class="reset-button" *ngIf="this.HasInitializedMap && this.mapComponent.PatientsAreVisible" color="primary" mat-raised-button (click)="this.mapComponent.HideAllDisplayedClusteredPatients()">Hide Patients</button>
+        <button matTooltipPosition="right" matTooltip="Assigns unclustered patients to nearest clusters" matTooltipClass="primary-tooltip" class="auto-assign-button" color="primary" *ngIf="this.HasInitializedMap && this.mapComponent.Clusters.length > 0 && this.mapComponent.UnclusteredPatientCount > 0 &&     this.mapComponent.AreMappedPolygonsVisible()" mat-raised-button (click)="this.AutoAssignUnclusteredPatients()">Auto Assign Unclustered Patients</button>
       </div>
     </div>
     <footer>

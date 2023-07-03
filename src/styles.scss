@@ -8,12 +8,17 @@
 }
 
 @font-face {
-  font-family: DidactGothicRegular;
-  src: url("/LocationClusterer/assets/DidactGothic-Regular.ttf") format("truetype");
+  font-family: RubikRegularProd;
+  src: url("/LocationClusterer/assets/RUBIK-REGULAR.TTF");
+}
+
+@font-face {
+  font-family: RubikRegularDev;
+  src: url("/assets/RUBIK-REGULAR.TTF");
 }
 
 // variables
-$ff-primary: DidactGothicRegular, 'Open Sans',  sans-serif;
+$ff-primary: RubikRegularProd, RubikRegularDev, 'Open Sans',  sans-serif;
 $ff-secondary: 'Source Code Pro', monospace;
 
 $fw-reg: 400;
@@ -39,6 +44,7 @@ $bs: 0.25em 0.25em 0.75em rgba(0,0,0,0.25),
 html
 {
     height: 100%;
+    font-family: $ff-primary;
 }
 body
 {
@@ -46,6 +52,10 @@ body
     padding: 0;
     height: 100%;
     overflow-x: hidden;
+}
+button
+{
+  padding: 0 5px;
 }
 
 //html, body { height: 100%; }

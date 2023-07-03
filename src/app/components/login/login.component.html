@@ -11,7 +11,7 @@
           <fa-icon [icon]="revealPassword ? faEye : faEyeSlash"></fa-icon>
         </button>
       </mat-form-field>
-      <button [disabled]="this.password.length == 0" color="accent" mat-raised-button (click)="OnSubmit()">Login</button>
+      <button [disabled]="this.password.length == 0" color="primary" mat-raised-button (click)="OnSubmit()">Login</button>
       <p class="error-message" *ngIf="this.password.length == 0 && this.hasAttempted == true">Incorrect Password</p>
     </div>
     <footer>

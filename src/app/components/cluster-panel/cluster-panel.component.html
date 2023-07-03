@@ -13,18 +13,18 @@
 
     <div *ngIf="this.cluster.milageEstimate < 0"  matTooltip="Can only calculate milage for clusters of size < 12" matTooltipClass="primary-tooltip" matTooltipPosition="right" [matTooltipDisabled]="this.cluster.milageEstimate == -1 && this.cluster.patients.length < 12">
     
-      <button class="milage-button" mat-flat-button matTooltipPosition="right" [matTooltipDisabled]="false" matTooltip="Milage" matTooltipClass="primary-tooltip" color="accent" [disabled]="this.cluster.milageEstimate != -1 || this.cluster.patients.length >= 12" (click)="GetClusterMilage($event)"> Get Milage </button>
+      <button class="milage-button" mat-flat-button matTooltipPosition="right" [matTooltipDisabled]="false" matTooltip="Calculate round-trip milage" matTooltipClass="primary-tooltip" color="primary" [disabled]="this.cluster.milageEstimate != -1 || this.cluster.patients.length >= 12" (click)="GetClusterMilage($event)"> Get Milage </button>
     </div>
-    <p *ngIf="this.cluster.milageEstimate >= 0 && this.cluster.patients.length > 1">Milage: {{this.cluster.milageEstimate}} miles</p>
+    <p *ngIf="this.cluster.milageEstimate >= 0 && this.cluster.patients.length > 1">Round-trip Milage: {{this.cluster.milageEstimate}} miles</p>
     <p *ngIf="this.cluster.diameter >= 0">Diameter: {{this.cluster.diameter}} miles</p>
     <ng-container *ngIf="!this.cluster.hasBeenPartitioned">
-        <!-- <button mat-flat-button color="accent" class="auto-partition-button" *ngIf="this.cluster.leafletMarkerCluster !== undefined" (click)="AutoPartition($event)">Auto Partition</button> -->
+        <!-- <button mat-flat-button color="primary" class="auto-partition-button" *ngIf="this.cluster.leafletMarkerCluster !== undefined" (click)="AutoPartition($event)">Auto Partition</button> -->
         <div class="kmeans-settings">
-            <button mat-flat-button color="accent" matTooltipPosition="right" matTooltip="Partitions using K-means clustering algorithm" matTooltipClass="primary-tooltip" [disabled]="this.cluster.hasBeenPartitioned || this.mainComponent.ShowSpinner" (click)="RunKmeans($event)">Auto Partition</button>
+            <button mat-flat-button color="primary" matTooltipPosition="right" matTooltip="Partitions using K-means clustering algorithm" matTooltipClass="primary-tooltip" [disabled]="this.cluster.hasBeenPartitioned || this.mainComponent.ShowSpinner" (click)="RunKmeans($event)">Auto Partition</button>
             <input type="number" min="2" max="12" matTooltipPosition="right" matTooltip="The number of partitions" matTooltipClass="primary-tooltip" [(ngModel)]="k">
         </div>
         <div class="grid-partition-settings">
-          <button mat-flat-button color="accent" matTooltipPosition="right" matTooltip="Partitions using a grid layout" matTooltipClass="primary-tooltip" [disabled]="this.cluster.hasBeenPartitioned || !this.AreGridSettingsValid() || this.mainComponent.ShowSpinner" (click)="RunGridCluster($event)">Grid Partition</button>
+          <button mat-flat-button color="primary" matTooltipPosition="right" matTooltip="Partitions using a grid layout" matTooltipClass="primary-tooltip" [disabled]="this.cluster.hasBeenPartitioned || !this.AreGridSettingsValid() || this.mainComponent.ShowSpinner" (click)="RunGridCluster($event)">Grid Partition</button>
           <input type="number" min="1" max="8" matTooltipPosition="right" matTooltip="The number of rows (from 1 to 8)" matTooltipClass="primary-tooltip" [(ngModel)]="rows">
           <input type="number" min="1" max="8" matTooltipPosition="right" matTooltip="The number of columns (from 1 to 8)" matTooltipClass="primary-tooltip" [(ngModel)]="columns">
         </div>

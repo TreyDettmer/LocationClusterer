@@ -183,6 +183,11 @@ export class MapComponent implements AfterViewInit {
         this.OnClusterClicked.emit({cluster: newCluster});  
       });
       newCluster.polygon = clusterPolygon;
+      if (newCluster.routePolylineShape.length != 0)
+      {
+        var polyline = L.polyline(newCluster.routePolylineShape,{color: 'blue'});
+        newCluster.routePolyline = polyline;
+      }
       this.Clusters.push(newCluster);
     }
     for (let i = 0; i < this.previousUnclusteredPatients.length; i++)
@@ -229,6 +234,7 @@ export class MapComponent implements AfterViewInit {
       newCluster.patients.push(p);
     }
     newCluster.shape = JSON.parse(JSON.stringify(originalCluster.shape));
+    newCluster.routePolylineShape = JSON.parse(JSON.stringify(originalCluster.routePolylineShape));
     newCluster.color = originalCluster.color;
     newCluster.mapComponent = originalCluster.mapComponent;
     newCluster.milageEstimate = originalCluster.milageEstimate;
@@ -890,15 +896,6 @@ export class MapComponent implements AfterViewInit {
       scaledHull[i] = this.GetScaledPoint(scaledHull[i],center,scaleFactor);
     }
     polygon = L.polygon(scaledHull,{weight:1});
-    let area = Math.abs(polygon.getBounds().getNorth() - polygon.getBounds().getSouth()) * Math.abs(polygon.getBounds().getEast() - polygon.getBounds().getWest());
-    if (area < .000003)
-    {
-      // for (let i = 0; i < scaledHull.length; i++)
-      // {
-      //   scaledHull[i] = this.GetScaledPoint(scaledHull[i],center,7.0);
-      // }
-      // console.log("scaled up");
-    }
     return scaledHull;
   }
 
@@ -1866,6 +1863,14 @@ export class MapComponent implements AfterViewInit {
   public DrawClusterRoundTripRoute(cluster : Cluster, latLngs : L.LatLng[])
   {
 
+    let points = [];
+    for (let i = 0; i < latLngs.length; i++)
+    {
+      
+      let latLngAsArray = latLngs[i] as unknown as number[];
+      points.push([latLngAsArray[0],latLngAsArray[1]]);
+    }
+    cluster.routePolylineShape = JSON.parse(JSON.stringify(points)) ;
     var polyline = L.polyline(latLngs,{color: 'blue'});
     cluster.routePolyline = polyline;
   }
