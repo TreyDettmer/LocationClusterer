@@ -62,7 +62,7 @@ const routes: Routes = [
     LeafletMarkerClusterModule,
     MatCheckboxModule,
     FontAwesomeModule,
-    RouterModule.forRoot(routes)
+    RouterModule.forRoot(routes, {useHash: true})
   ],
   providers: [],
   bootstrap: [AppComponent]
